@@ -34,7 +34,7 @@ def index(request: WSGIRequest) -> HttpResponse:
     q = request.GET.get("q", "").strip()
     schip = request.GET.get("schip", "")
 
-    ritten = _zoek(Rit.objects.zichtbaar(), q).select_related("piloot__profile__main_character", "character")
+    ritten = Rit.objects.zichtbaar().select_related("piloot__profile__main_character", "character")
     if schip in SchipType.values:
         ritten = ritten.filter(schip_type=schip)
     vragen = _zoek(Vraag.objects.zichtbaar(), q).select_related("aanvrager__profile__main_character", "character")
@@ -98,7 +98,6 @@ def vraag_form(request: WSGIRequest, rit_id: int | None = None) -> HttpResponse:
         vraag.aanvrager = request.user
         if rit:
             vraag.rit = rit
-            vraag.van, vraag.naar = rit.van, rit.naar
             vraag.status = Vraag.Status.AANGEVRAAGD
         vraag.save()
         if rit:

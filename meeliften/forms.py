@@ -39,17 +39,15 @@ class _EigenCharacterForm(forms.ModelForm):
 class RitForm(_EigenCharacterForm):
     class Meta:
         model = Rit
-        fields = ["character", "schip_type", "schip_naam", "vertrek", "van", "naar", "vrij_m3", "vrij_schepen", "opmerking"]
+        fields = ["character", "schip_type", "schip_naam", "vrij_m3", "vrij_schepen", "opmerking"]
         labels = {
             "character": _("Piloot"),
             "schip_type": _("Schip"),
             "schip_naam": _("Scheepstype / naam"),
-            "vertrek": _("Vertrek (EVE-tijd)"),
             "vrij_m3": _("Vrij (m³)"),
             "vrij_schepen": _("Vrije SMB-plekken"),
         }
         widgets = {
-            "vertrek": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "opmerking": forms.Textarea(attrs={"rows": 2, "placeholder": _("Bijv. 'alleen gepackagede schepen', 'via Thera'")}),
         }
 
@@ -93,10 +91,6 @@ class VraagForm(_EigenCharacterForm):
     def __init__(self, *args, rit=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.rit = rit
-        if rit:
-            for naam in ("van", "naar"):
-                self.fields[naam].disabled = True
-                self.initial[naam] = getattr(rit, naam)
 
     def clean(self):
         data = super().clean()

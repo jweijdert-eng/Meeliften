@@ -11,8 +11,7 @@
             <p class="ml-dim small mb-3">
                 {% if rit.icoon %}<img class="ml-icoon float-start me-2" src="{{ rit.icoon }}" alt="">{% endif %}
                 {{ rit.get_schip_type_display }}{% if rit.schip_naam %} ({{ rit.schip_naam }}){% endif %}
-                {% translate "van" %} {{ rit.piloot|naam }} · {{ rit.van }} → {{ rit.naar }}
-                {% if rit.vertrek %}· {{ rit.vertrek|date:"D j M H:i" }} ET{% endif %}<br>
+                {% translate "van" %} {{ rit.piloot|naam }}<br>
                 {% translate "Nog vrij" %}:
                 {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} m³{% endif %}
                 {% if rit.vrij_schepen is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}{{ vrij.1 }} SMB{% endif %}

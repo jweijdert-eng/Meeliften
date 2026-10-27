@@ -1,6 +1,6 @@
 """Models — Meeliften.
 
-Een `Rit` is aanbod: een capital-piloot vliegt van A naar B en heeft ruimte over.
+Een `Rit` is aanbod: een capital-piloot heeft ruimte over. De route staat bij de vraag.
 Een `Vraag` is iemand die vervoer zoekt. Hangt een vraag aan een rit, dan is het
 een plekje-aanvraag bij die piloot; zonder rit staat hij los op het bord tot een
 capital-piloot zegt "ik neem het mee".
@@ -16,9 +16,8 @@ from django.utils.translation import gettext_lazy as _
 
 from allianceauth.eveonline.models import EveCharacter
 
-# Zonder vertrektijd blijft een rit zo lang zichtbaar; met vertrektijd tot een dag erna.
-RIT_ZONDER_TIJD_DAGEN = 14
-RIT_NA_VERTREK_DAGEN = 1
+# Zo lang blijft aangeboden ruimte op het bord staan.
+RIT_DAGEN = 30
 VRAAG_ZONDER_DATUM_DAGEN = 30
 
 
@@ -60,14 +59,13 @@ STANDAARD_ICOON = {
 class RitQuerySet(models.QuerySet):
     def zichtbaar(self):
         nu = timezone.now()
-        return self.filter(status__in=[Rit.Status.OPEN, Rit.Status.VOL]).filter(
-            Q(vertrek__isnull=True, aangemaakt__gte=nu - timedelta(days=RIT_ZONDER_TIJD_DAGEN))
-            | Q(vertrek__gte=nu - timedelta(days=RIT_NA_VERTREK_DAGEN))
+        return self.filter(
+            status__in=[Rit.Status.OPEN, Rit.Status.VOL], aangemaakt__gte=nu - timedelta(days=RIT_DAGEN)
         )
 
 
 class Rit(models.Model):
-    """Aanbod: een capital-piloot met vrije ruimte op een route."""
+    """Aanbod: een capital-piloot met vrije ruimte."""
 
     class Status(models.TextChoices):
         OPEN = "open", _("Ruimte vrij")
@@ -80,9 +78,6 @@ class Rit(models.Model):
     schip_type = models.CharField(max_length=10, choices=SchipType.choices, default=SchipType.JF)
     schip_naam = models.CharField(max_length=60, blank=True, help_text=_("Bijv. Ark, Nyx, Revelation"))
     schip_type_id = models.PositiveIntegerField(null=True, blank=True, editable=False)
-    van = models.CharField(max_length=100)
-    naar = models.CharField(max_length=100)
-    vertrek = models.DateTimeField(null=True, blank=True, help_text=_("Ongeveer, in EVE-tijd"))
     vrij_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Vrije cargo / fleet hangar in m³"))
     vrij_schepen = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text=_("Aantal schepen dat nog in de ship maintenance bay past")
@@ -95,12 +90,12 @@ class Rit(models.Model):
 
     class Meta:
         default_permissions = ()
-        ordering = ["vertrek", "-aangemaakt"]
+        ordering = ["-aangemaakt"]
         verbose_name = _("rit")
         verbose_name_plural = _("ritten")
 
     def __str__(self) -> str:
-        return f"{self.get_schip_type_display()} {self.van} → {self.naar}"
+        return self.schip_naam or self.get_schip_type_display()
 
     @property
     def icoon(self) -> str:

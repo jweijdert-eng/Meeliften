@@ -5,7 +5,7 @@
 {% block details %}
     <div class="ml-card ml-form">
         <h5 class="mb-1">{% if rit %}{% translate "Rit bewerken" %}{% else %}{% translate "Rit aanbieden" %}{% endif %}</h5>
-        <p class="ml-dim small mb-3">{% translate "Vlieg je met een capital van A naar B en heb je ruimte over? Andere leden kunnen dan een plekje vragen." %}</p>
+        <p class="ml-dim small mb-3">{% translate "Heb je een capital met ruimte over? Andere leden kunnen dan een plekje vragen en zeggen van waar naar waar het moet." %}</p>
         <form method="post">
             {% csrf_token %}
             {% include 'meeliften/_velden.html' %}

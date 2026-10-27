@@ -1,22 +1,22 @@
 # Meeliften
 
 Een ruimte-beurs voor [Alliance Auth](https://gitlab.com/allianceauth/allianceauth).
-Capital-piloten (Jump Freighter, carrier, dread, FAX, super, titan, Rorqual) melden een rit
-met de ruimte die ze over hebben. Leden zonder capital vragen daarin een plekje, of zetten zelf
+Capital-piloten (Jump Freighter, carrier, dread, FAX, super, titan, Rorqual) melden welk schip
+ze hebben en hoeveel ruimte ze over hebben. Leden zonder capital vragen daarin een plekje, of zetten zelf
 een vraag op het bord ("Jita → 1DQ1-A, 40.000 m³ + 1 Ishtar") die een piloot kan oppakken.
 
 Alles wordt door de leden zelf ingevuld; er zijn geen ESI-scopes nodig.
 
 ## Zo werkt het
 
-- **Rit aanbieden**: schip, van → naar, vertrek (EVE-tijd), vrije m³ en/of vrije SMB-plekken.
-- **Plekje vragen** bij een rit: de piloot krijgt een AA-melding en accepteert of weigert.
+- **Ruimte aanbieden**: schip (met icoontje uit de SDE), vrije m³ en/of vrije SMB-plekken.
+- **Plekje vragen** bij een piloot, met van → naar erbij: de piloot krijgt een AA-melding en accepteert of weigert.
   Geweigerd? Dan staat de vraag los op het bord voor een andere piloot.
 - **Vervoer zoeken** zonder rit: een piloot klikt *Ik neem het mee*.
 - Bij elke rit zie je hoeveel ruimte er **nog vrij** is (aangeboden min wat al is toegezegd).
 - Afgeleverd / ingetrokken / rit geannuleerd: de ander krijgt steeds een melding.
-- Ritten verdwijnen een dag na vertrek (zonder vertrektijd na 14 dagen); losse vragen na hun
-  "uiterlijk"-datum (zonder datum na 30 dagen).
+- Aangeboden ruimte verdwijnt na 30 dagen (of eerder als de piloot hem afsluit); losse vragen na
+  hun "uiterlijk"-datum (zonder datum na 30 dagen).
 
 Systeemnamen worden aangevuld uit `eve_sde` (CorpTools) of `eveuniverse`, als een van beide
 geïnstalleerd is. Zonder die twee typ je de naam gewoon zelf.

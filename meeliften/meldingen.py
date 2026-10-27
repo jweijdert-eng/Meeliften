@@ -16,7 +16,7 @@ def _stuur(user, titel: str, tekst: str, level=Notification.Level.INFO) -> None:
 def plekje_gevraagd(vraag) -> None:
     rit = vraag.rit
     _stuur(rit.piloot, "Meeliften: plekje gevraagd",
-           f"{_naam(vraag.aanvrager)} wil mee met je {rit}: {vraag.wat}. Accepteer of weiger op de Meeliften-pagina.")
+           f"{_naam(vraag.aanvrager)} wil mee met je {rit}: {vraag.wat} ({vraag.van} → {vraag.naar}). Accepteer of weiger op de Meeliften-pagina.")
 
 
 def geaccepteerd(vraag) -> None:

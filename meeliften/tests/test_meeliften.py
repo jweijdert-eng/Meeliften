@@ -40,8 +40,7 @@ class Basis(TestCase):
         cls.buiten = AuthUtils.create_user("ml_buiten")
 
     def rit(self, **kw) -> Rit:
-        data = dict(piloot=self.piloot, schip_type="jf", van="1DQ1-A", naar="Jita",
-                    vertrek=timezone.now() + timedelta(hours=3), vrij_m3=300_000, vrij_schepen=None)
+        data = dict(piloot=self.piloot, schip_type="jf", schip_naam="Ark", vrij_m3=300_000, vrij_schepen=None)
         data.update(kw)
         return Rit.objects.create(**data)
 
@@ -59,7 +58,8 @@ class TestToegang(Basis):
         Vraag.objects.create(aanvrager=self.vrager, van="Jita", naar="Q-02UL", wat="Ishtar", schepen=1)
         r = client(self.ander).get(reverse("meeliften:index"))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "1DQ1-A")
+        self.assertContains(r, "Ark")
+        self.assertContains(r, "Q-02UL")
         self.assertContains(r, "Ishtar")
         self.assertContains(r, "300.000")
 
@@ -80,20 +80,20 @@ class TestRit(Basis):
     def test_rit_aanbieden(self):
         r = self.post(self.piloot, "rit_nieuw", data={
             "character": self.piloot.profile.main_character.pk, "schip_type": "carrier", "schip_naam": "Thanatos",
-            "van": "Q-02UL", "naar": "1DQ1-A", "vrij_schepen": 3,
+            "vrij_schepen": 3,
         })
         self.assertEqual(r.status_code, 302)
         rit = Rit.objects.get()
         self.assertEqual((rit.piloot, rit.vrij_schepen, rit.vrij_m3), (self.piloot, 3, None))
 
     def test_rit_zonder_ruimte_geweigerd(self):
-        r = self.post(self.piloot, "rit_nieuw", data={"schip_type": "jf", "van": "A", "naar": "B"})
+        r = self.post(self.piloot, "rit_nieuw", data={"schip_type": "jf"})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(Rit.objects.exists())
 
     def test_van_is_naar_geweigerd(self):
-        self.post(self.piloot, "rit_nieuw", data={"schip_type": "jf", "van": "Jita", "naar": "jita", "vrij_m3": 5})
-        self.assertFalse(Rit.objects.exists())
+        self.post(self.vrager, "vraag_nieuw", data={"van": "Jita", "naar": "jita", "wat": "x", "volume_m3": 5, "schepen": 0})
+        self.assertFalse(Vraag.objects.exists())
 
     def test_standaard_icoon_per_klasse(self):
         self.assertIn("/types/28850/", self.rit().icoon)
@@ -103,23 +103,23 @@ class TestRit(Basis):
     def test_herkend_schip_geeft_eigen_icoon_en_klasse(self):
         with patch("meeliften.forms.herken", return_value=(23913, "super")):
             self.post(self.piloot, "rit_nieuw", data={
-                "schip_type": "carrier", "schip_naam": "Nyx", "van": "A", "naar": "B", "vrij_schepen": 2,
+                "schip_type": "carrier", "schip_naam": "Nyx", "vrij_schepen": 2,
             })
         rit = Rit.objects.get()
         self.assertEqual((rit.schip_type, rit.schip_type_id), ("super", 23913))
         self.assertIn("/types/23913/", rit.icoon)
 
     def test_oude_ritten_verdwijnen(self):
-        self.rit(vertrek=timezone.now() - timedelta(days=2))
-        oud = self.rit(vertrek=None)
-        Rit.objects.filter(pk=oud.pk).update(aangemaakt=timezone.now() - timedelta(days=20))
-        vers = self.rit(vertrek=None)
+        oud = self.rit()
+        Rit.objects.filter(pk=oud.pk).update(aangemaakt=timezone.now() - timedelta(days=40))
+        self.rit(status="vertrokken")
+        vers = self.rit()
         self.assertEqual(list(Rit.objects.zichtbaar()), [vers])
 
 
 class TestPlekje(Basis):
     def vraag_plekje(self, rit, **kw):
-        data = {"wat": "Muninn + ammo", "volume_m3": 50_000, "schepen": 0}
+        data = {"van": "1DQ1-A", "naar": "Jita", "wat": "Muninn + ammo", "volume_m3": 50_000, "schepen": 0}
         data.update(kw)
         return self.post(self.vrager, "plekje", rit.pk, data=data)
 
@@ -128,7 +128,8 @@ class TestPlekje(Basis):
         self.assertEqual(self.vraag_plekje(rit).status_code, 302)
         vraag = Vraag.objects.get()
         self.assertEqual((vraag.status, vraag.rit, vraag.van, vraag.naar), ("aangevraagd", rit, "1DQ1-A", "Jita"))
-        self.assertTrue(Notification.objects.filter(user=self.piloot, title__contains="plekje").exists())
+        melding = Notification.objects.get(user=self.piloot, title__contains="plekje")
+        self.assertIn("1DQ1-A → Jita", melding.message)
 
         self.post(self.piloot, "vraag_actie", vraag.pk, "accepteer")
         vraag.refresh_from_db()
@@ -153,7 +154,7 @@ class TestPlekje(Basis):
 
     def test_eigen_rit_geen_plekje(self):
         rit = self.rit()
-        self.post(self.piloot, "plekje", rit.pk, data={"wat": "x", "volume_m3": 1, "schepen": 0})
+        self.post(self.piloot, "plekje", rit.pk, data={"van": "A", "naar": "B", "wat": "x", "volume_m3": 1, "schepen": 0})
         self.assertFalse(Vraag.objects.exists())
 
     def test_weigeren_zet_vraag_los_op_bord(self):
@@ -178,7 +179,7 @@ class TestPlekje(Basis):
         self.vraag_plekje(rit)
         toegezegd = Vraag.objects.get()
         self.post(self.piloot, "vraag_actie", toegezegd.pk, "accepteer")
-        self.post(self.ander, "plekje", rit.pk, data={"wat": "PLEX", "volume_m3": 1, "schepen": 0})
+        self.post(self.ander, "plekje", rit.pk, data={"van": "A", "naar": "B", "wat": "PLEX", "volume_m3": 1, "schepen": 0})
         self.post(self.piloot, "rit_status", rit.pk, "geannuleerd")
         self.assertEqual(set(Vraag.objects.values_list("status", "rit")), {("open", None)})
         self.assertTrue(Notification.objects.filter(user=self.vrager, title__contains="vervalt").exists())
