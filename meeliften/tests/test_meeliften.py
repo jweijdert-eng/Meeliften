@@ -54,21 +54,25 @@ class TestToegang(Basis):
 
     def test_bord_laadt(self):
         self.rit()
-        Vraag.objects.create(aanvrager=self.vrager, van="Jita", naar="Q-02UL", wat="Ishtar", schepen=1)
+        Vraag.objects.create(aanvrager=self.vrager, volume_m3=60_000, opmerking="Fuel blocks")
         r = client(self.ander).get(reverse("meeliften:index"))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "Ark")
         self.assertContains(r, "Jump Freighter")
         self.assertContains(r, "/types/28850/")
-        self.assertContains(r, "Q-02UL")
-        self.assertContains(r, "Ishtar")
+        self.assertContains(r, "Fuel blocks")
         self.assertContains(r, "300.000")
+        self.assertContains(r, "60.000")
 
     def test_formulieren_laden(self):
         rit = self.rit()
         for naam, args in (("rit_nieuw", []), ("vraag_nieuw", []), ("plekje", [rit.pk]), ("rit_bewerk", [rit.pk])):
             user = self.vrager if naam == "plekje" else self.piloot
             self.assertEqual(client(user).get(reverse(f"meeliften:{naam}", args=args)).status_code, 200, naam)
+
+    def test_vraagformulier_heeft_alleen_de_overgebleven_velden(self):
+        r = client(self.vrager).get(reverse("meeliften:vraag_nieuw"))
+        self.assertEqual(list(r.context["form"].fields), ["character", "volume_m3", "opmerking"])
 
     def test_ander_mag_rit_niet_bewerken(self):
         rit = self.rit()
@@ -80,8 +84,7 @@ class TestToegang(Basis):
 class TestRit(Basis):
     def test_rit_aanbieden(self):
         r = self.post(self.piloot, "rit_nieuw", data={
-            "character": self.piloot.profile.main_character.pk, "schip_id": 23911,
-            "vrij_schepen": 3,
+            "character": self.piloot.profile.main_character.pk, "schip_id": 23911, "vrij_schepen": 3,
         })
         self.assertEqual(r.status_code, 302)
         rit = Rit.objects.get()
@@ -93,10 +96,6 @@ class TestRit(Basis):
         r = self.post(self.piloot, "rit_nieuw", data={"schip_id": 28850})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(Rit.objects.exists())
-
-    def test_van_is_naar_geweigerd(self):
-        self.post(self.vrager, "vraag_nieuw", data={"van": "Jita", "naar": "jita", "wat": "x", "volume_m3": 5, "schepen": 0})
-        self.assertFalse(Vraag.objects.exists())
 
     def test_icoon_en_klasse_volgen_het_schip(self):
         rit = self.rit(schip_id=23913)
@@ -127,7 +126,7 @@ class TestRit(Basis):
 
 class TestPlekje(Basis):
     def vraag_plekje(self, rit, **kw):
-        data = {"van": "1DQ1-A", "naar": "Jita", "wat": "Muninn + ammo", "volume_m3": 50_000, "schepen": 0}
+        data = {"volume_m3": 50_000, "opmerking": "Muninn + ammo"}
         data.update(kw)
         return self.post(self.vrager, "plekje", rit.pk, data=data)
 
@@ -135,9 +134,9 @@ class TestPlekje(Basis):
         rit = self.rit()
         self.assertEqual(self.vraag_plekje(rit).status_code, 302)
         vraag = Vraag.objects.get()
-        self.assertEqual((vraag.status, vraag.rit, vraag.van, vraag.naar), ("aangevraagd", rit, "1DQ1-A", "Jita"))
+        self.assertEqual((vraag.status, vraag.rit), ("aangevraagd", rit))
         melding = Notification.objects.get(user=self.piloot, title__contains="plekje")
-        self.assertIn("1DQ1-A → Jita", melding.message)
+        self.assertIn("50.000 m³ — Muninn + ammo", melding.message)
 
         self.post(self.piloot, "vraag_actie", vraag.pk, "accepteer")
         vraag.refresh_from_db()
@@ -155,14 +154,21 @@ class TestPlekje(Basis):
         self.assertEqual(self.vraag_plekje(rit).status_code, 200)
         self.assertFalse(Vraag.objects.exists())
 
-    def test_schip_in_rit_zonder_smb_geweigerd(self):
+    def test_smb_rit_alleen_met_opmerking(self):
+        rit = self.rit(vrij_m3=None, vrij_schepen=2)
+        self.vraag_plekje(rit)
+        self.assertFalse(Vraag.objects.exists(), "m³ vragen bij een rit zonder m³ kan niet")
+        self.vraag_plekje(rit, volume_m3="", opmerking="1 Ishtar")
+        self.assertEqual(Vraag.objects.get().omschrijving, "1 Ishtar")
+
+    def test_lege_vraag_geweigerd(self):
         rit = self.rit()
-        self.vraag_plekje(rit, volume_m3="", schepen=1)
+        self.vraag_plekje(rit, volume_m3="", opmerking="   ")
         self.assertFalse(Vraag.objects.exists())
 
     def test_eigen_rit_geen_plekje(self):
         rit = self.rit()
-        self.post(self.piloot, "plekje", rit.pk, data={"van": "A", "naar": "B", "wat": "x", "volume_m3": 1, "schepen": 0})
+        self.post(self.piloot, "plekje", rit.pk, data={"volume_m3": 1})
         self.assertFalse(Vraag.objects.exists())
 
     def test_weigeren_zet_vraag_los_op_bord(self):
@@ -187,7 +193,7 @@ class TestPlekje(Basis):
         self.vraag_plekje(rit)
         toegezegd = Vraag.objects.get()
         self.post(self.piloot, "vraag_actie", toegezegd.pk, "accepteer")
-        self.post(self.ander, "plekje", rit.pk, data={"van": "A", "naar": "B", "wat": "PLEX", "volume_m3": 1, "schepen": 0})
+        self.post(self.ander, "plekje", rit.pk, data={"volume_m3": 1, "opmerking": "PLEX"})
         self.post(self.piloot, "rit_status", rit.pk, "geannuleerd")
         self.assertEqual(set(Vraag.objects.values_list("status", "rit")), {("open", None)})
         self.assertTrue(Notification.objects.filter(user=self.vrager, title__contains="vervalt").exists())
@@ -205,7 +211,7 @@ class TestPlekje(Basis):
 
 class TestLosseVraag(Basis):
     def test_vraag_op_bord_en_meenemen(self):
-        r = self.post(self.vrager, "vraag_nieuw", data={"van": "Jita", "naar": "Q-02UL", "wat": "Ishtar", "schepen": 1})
+        r = self.post(self.vrager, "vraag_nieuw", data={"volume_m3": 40_000, "opmerking": "Ishtar"})
         self.assertEqual(r.status_code, 302)
         vraag = Vraag.objects.get()
         self.assertEqual(vraag.status, "open")
@@ -223,20 +229,13 @@ class TestLosseVraag(Basis):
         self.assertEqual((vraag.status, vraag.vervoerder), ("open", None))
 
     def test_intrekken_meldt_vervoerder(self):
-        vraag = Vraag.objects.create(aanvrager=self.vrager, van="A", naar="B", wat="x", volume_m3=5,
-                                     status="toegezegd", vervoerder=self.piloot)
+        vraag = Vraag.objects.create(aanvrager=self.vrager, volume_m3=5, status="toegezegd", vervoerder=self.piloot)
         self.post(self.vrager, "vraag_actie", vraag.pk, "annuleer")
         vraag.refresh_from_db()
         self.assertEqual(vraag.status, "geannuleerd")
         self.assertTrue(Notification.objects.filter(user=self.piloot, title__contains="ingetrokken").exists())
 
-    def test_verlopen_vraag_verdwijnt(self):
-        Vraag.objects.create(aanvrager=self.vrager, van="A", naar="B", wat="x", volume_m3=5,
-                             uiterlijk=timezone.now().date() - timedelta(days=1))
+    def test_oude_vraag_verdwijnt(self):
+        oud = Vraag.objects.create(aanvrager=self.vrager, volume_m3=5)
+        Vraag.objects.filter(pk=oud.pk).update(aangemaakt=timezone.now() - timedelta(days=40))
         self.assertFalse(Vraag.objects.zichtbaar().exists())
-
-    def test_systemen_zoeken(self):
-        r = client(self.vrager).get(reverse("meeliften:systemen"), {"q": "J"})
-        self.assertEqual(r.json(), {"systemen": []})
-        r = client(self.vrager).get(reverse("meeliften:systemen"), {"q": "Jit"})
-        self.assertEqual(r.status_code, 200)

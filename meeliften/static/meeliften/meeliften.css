@@ -57,7 +57,6 @@
     display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
     margin-top: .5rem; padding: .4rem .5rem; border-radius: 6px; background: var(--ml-surface-2);
 }
-.ml-app .ml-zoek { max-width: 260px; }
 .ml-app .ml-filter { max-width: 200px; }
 .ml-app form { margin: 0; }
 

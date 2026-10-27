@@ -4,10 +4,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.handlers.wsgi import WSGIRequest
 from django.db import transaction
-from django.db.models import Q
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 
@@ -20,23 +18,16 @@ def _beheerder(user) -> bool:
     return user.has_perm("meeliften.manage")
 
 
-def _zoek(qs, q: str):
-    if q:
-        qs = qs.filter(Q(van__icontains=q) | Q(naar__icontains=q))
-    return qs
-
-
 @login_required
 @permission_required("meeliften.basic_access")
 def index(request: WSGIRequest) -> HttpResponse:
     """Het bord: aangeboden ritten, open vragen en je eigen lopende zaken."""
-    q = request.GET.get("q", "").strip()
     schip = request.GET.get("schip", "")
 
     ritten = Rit.objects.zichtbaar().select_related("piloot__profile__main_character", "character")
     if schip in SchipType.values:
         ritten = ritten.filter(schip_type=schip)
-    vragen = _zoek(Vraag.objects.zichtbaar(), q).select_related("aanvrager__profile__main_character", "character")
+    vragen = Vraag.objects.zichtbaar().select_related("aanvrager__profile__main_character", "character")
 
     mijn_ritten = (
         Rit.objects.filter(piloot=request.user, status__in=[Rit.Status.OPEN, Rit.Status.VOL])
@@ -58,7 +49,6 @@ def index(request: WSGIRequest) -> HttpResponse:
         "mijn_ritten": mijn_ritten,
         "mijn_vragen": mijn_vragen,
         "ik_vervoer": ik_vervoer,
-        "q": q,
         "schip": schip,
         "schip_types": SchipType.choices,
         "beheerder": _beheerder(request.user),
@@ -183,28 +173,4 @@ def vraag_actie(request: WSGIRequest, vraag_id: int, actie: str) -> HttpResponse
         return redirect("meeliften:index")
     messages.success(request, _("Gelukt."))
     return redirect("meeliften:index")
-
-
-@login_required
-@permission_required("meeliften.basic_access")
-def systemen(request: WSGIRequest) -> JsonResponse:
-    """Systeemnamen voor het invulveld; uit eve_sde (CorpTools) of eveuniverse, wat er is."""
-    q = request.GET.get("q", "").strip()
-    namen: list[str] = []
-    if len(q) >= 2:
-        try:
-            from eve_sde.models import SolarSystem
-
-            # eve_sde vertaalt `name` via modeltranslation; in een Nederlandse sessie wordt dat
-            # stilletjes `name_nl`, en die is leeg. Systeemnamen zijn in elke taal hetzelfde.
-            with translation.override("en"):
-                namen = list(SolarSystem.objects.filter(name__istartswith=q).order_by("name").values_list("name", flat=True)[:15])
-        except Exception:  # noqa: BLE001
-            try:
-                from eveuniverse.models import EveSolarSystem
-
-                namen = list(EveSolarSystem.objects.filter(name__istartswith=q).order_by("name").values_list("name", flat=True)[:15])
-            except Exception:  # noqa: BLE001
-                namen = []
-    return JsonResponse({"systemen": namen})
 

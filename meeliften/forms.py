@@ -23,17 +23,9 @@ class _EigenCharacterForm(forms.ModelForm):
                 self.initial.setdefault("character", main.pk)
         else:
             del self.fields["character"]
-        for naam, veld in self.fields.items():
+        for veld in self.fields.values():
             css = "form-select" if isinstance(veld.widget, forms.Select) else "form-control"
             veld.widget.attrs.setdefault("class", css)
-            if naam in ("van", "naar"):
-                veld.widget.attrs.update({"list": "ml-systemen", "autocomplete": "off", "data-ml-systeem": "1"})
-
-    def clean(self):
-        data = super().clean()
-        if data.get("van") and data.get("van", "").strip().lower() == data.get("naar", "").strip().lower():
-            raise forms.ValidationError(_("Van en naar zijn hetzelfde."))
-        return data
 
 
 class RitForm(_EigenCharacterForm):
@@ -63,17 +55,13 @@ class RitForm(_EigenCharacterForm):
 class VraagForm(_EigenCharacterForm):
     class Meta:
         model = Vraag
-        fields = ["character", "van", "naar", "wat", "volume_m3", "schepen", "uiterlijk", "opmerking"]
+        fields = ["character", "volume_m3", "opmerking"]
         labels = {
             "character": _("Voor"),
-            "wat": _("Wat moet er mee?"),
             "volume_m3": _("Volume (m³)"),
-            "schepen": _("Opgebouwde schepen"),
-            "uiterlijk": _("Uiterlijk nodig op"),
         }
         widgets = {
-            "uiterlijk": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
-            "opmerking": forms.Textarea(attrs={"rows": 2}),
+            "opmerking": forms.Textarea(attrs={"rows": 3, "placeholder": _("Bijv. 'Ishtar + ammo, Jita naar Q-02UL'")}),
         }
 
     def __init__(self, *args, rit=None, **kwargs):
@@ -82,17 +70,13 @@ class VraagForm(_EigenCharacterForm):
 
     def clean(self):
         data = super().clean()
-        if not data.get("volume_m3") and not data.get("schepen"):
-            raise forms.ValidationError(_("Vul een volume of een aantal schepen in."))
+        if not data.get("volume_m3") and not data.get("opmerking", "").strip():
+            raise forms.ValidationError(_("Vul een volume of een opmerking in."))
         rit = self.rit
-        if rit:
-            m3, schepen = rit.nog_vrij()
-            if data.get("volume_m3") and rit.vrij_m3 is None:
-                self.add_error("volume_m3", _("Deze rit neemt alleen schepen mee."))
-            elif data.get("volume_m3") and m3 is not None and data["volume_m3"] > m3:
+        if rit and data.get("volume_m3"):
+            m3, _schepen = rit.nog_vrij()
+            if rit.vrij_m3 is None:
+                self.add_error("volume_m3", _("Deze rit heeft alleen SMB-plekken; zet in de opmerking welk schip mee moet."))
+            elif data["volume_m3"] > m3:
                 self.add_error("volume_m3", _("Er is nog maar %(m3)s m³ vrij.") % {"m3": f"{m3:,}".replace(",", ".")})
-            if data.get("schepen") and rit.vrij_schepen is None:
-                self.add_error("schepen", _("Deze rit heeft geen SMB-plekken."))
-            elif data.get("schepen") and schepen is not None and data["schepen"] > schepen:
-                self.add_error("schepen", _("Er zijn nog maar %(n)s SMB-plekken vrij.") % {"n": schepen})
         return data

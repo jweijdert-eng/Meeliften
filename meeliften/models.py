@@ -1,7 +1,7 @@
 """Models — Meeliften.
 
-Een `Rit` is aanbod: een capital-piloot heeft ruimte over. De route staat bij de vraag.
-Een `Vraag` is iemand die vervoer zoekt. Hangt een vraag aan een rit, dan is het
+Een `Rit` is aanbod: een capital-piloot heeft ruimte over.
+Een `Vraag` is iemand die ruimte zoekt (m³ en/of een opmerking). Hangt een vraag aan een rit, dan is het
 een plekje-aanvraag bij die piloot; zonder rit staat hij los op het bord tot een
 capital-piloot zegt "ik neem het mee".
 """
@@ -10,7 +10,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -18,7 +17,7 @@ from allianceauth.eveonline.models import EveCharacter
 
 # Zo lang blijft aangeboden ruimte op het bord staan.
 RIT_DAGEN = 30
-VRAAG_ZONDER_DATUM_DAGEN = 30
+VRAAG_DAGEN = 30
 
 
 class General(models.Model):
@@ -123,11 +122,8 @@ class Rit(models.Model):
 
     def bezet(self) -> tuple[int, int]:
         """(m³, schepen) die al aan deze rit zijn toegezegd."""
-        m3 = schepen = 0
-        for v in self.toegezegd:
-            m3 += v.volume_m3 or 0
-            schepen += v.schepen or 0
-        return m3, schepen
+        m3 = sum(v.volume_m3 or 0 for v in self.toegezegd)
+        return m3, 0
 
     def nog_vrij(self) -> tuple[int | None, int | None]:
         m3, schepen = self.bezet()
@@ -140,10 +136,7 @@ class Rit(models.Model):
 class VraagQuerySet(models.QuerySet):
     def zichtbaar(self):
         nu = timezone.now()
-        return self.filter(status=Vraag.Status.OPEN).filter(
-            Q(uiterlijk__isnull=True, aangemaakt__gte=nu - timedelta(days=VRAAG_ZONDER_DATUM_DAGEN))
-            | Q(uiterlijk__gte=nu.date())
-        )
+        return self.filter(status=Vraag.Status.OPEN, aangemaakt__gte=nu - timedelta(days=VRAAG_DAGEN))
 
 
 class Vraag(models.Model):
@@ -158,12 +151,7 @@ class Vraag(models.Model):
 
     aanvrager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meeliften_vragen")
     character = models.ForeignKey(EveCharacter, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    van = models.CharField(max_length=100)
-    naar = models.CharField(max_length=100)
-    wat = models.CharField(max_length=200, help_text=_("Bijv. 'Ishtar + 30k m³ ammo'"))
-    volume_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Losse spullen in m³"))
-    schepen = models.PositiveSmallIntegerField(default=0, help_text=_("Aantal opgebouwde schepen (voor de SMB)"))
-    uiterlijk = models.DateField(null=True, blank=True, help_text=_("Uiterlijk nodig op"))
+    volume_m3 = models.PositiveIntegerField(null=True, blank=True)
     opmerking = models.TextField(blank=True)
     rit = models.ForeignKey(Rit, on_delete=models.SET_NULL, null=True, blank=True, related_name="vragen")
     vervoerder = models.ForeignKey(
@@ -176,12 +164,22 @@ class Vraag(models.Model):
 
     class Meta:
         default_permissions = ()
-        ordering = ["uiterlijk", "-aangemaakt"]
+        ordering = ["-aangemaakt"]
         verbose_name = _("vraag")
         verbose_name_plural = _("vragen")
 
     def __str__(self) -> str:
-        return f"{self.wat} ({self.van} → {self.naar})"
+        return self.omschrijving
+
+    @property
+    def omschrijving(self) -> str:
+        """Korte tekst voor meldingen: '40.000 m³ — Ishtar + ammo'."""
+        delen = []
+        if self.volume_m3:
+            delen.append(f"{self.volume_m3:,} m³".replace(",", "."))
+        if self.opmerking.strip():
+            delen.append(self.opmerking.strip().splitlines()[0][:80])
+        return " — ".join(delen) or "vraag"
 
     @property
     def actief(self) -> bool:

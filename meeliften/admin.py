@@ -7,7 +7,7 @@ from .models import Rit, Vraag
 
 class VraagInline(admin.TabularInline):
     model = Vraag
-    fields = ("aanvrager", "wat", "van", "naar", "volume_m3", "schepen", "status")
+    fields = ("aanvrager", "volume_m3", "opmerking", "status")
     readonly_fields = ("aanvrager",)
     extra = 0
 
@@ -22,6 +22,6 @@ class RitAdmin(admin.ModelAdmin):
 
 @admin.register(Vraag)
 class VraagAdmin(admin.ModelAdmin):
-    list_display = ("wat", "van", "naar", "aanvrager", "vervoerder", "status", "aangemaakt")
+    list_display = ("__str__", "aanvrager", "vervoerder", "status", "aangemaakt")
     list_filter = ("status",)
-    search_fields = ("wat", "van", "naar", "aanvrager__username")
+    search_fields = ("opmerking", "aanvrager__username")

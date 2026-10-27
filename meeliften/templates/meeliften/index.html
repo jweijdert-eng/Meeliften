@@ -33,8 +33,8 @@
                     {% for v in rit.vragen.all %}{% if v.status == "aangevraagd" or v.status == "toegezegd" %}
                         <div class="ml-aanvraag">
                             <img class="ml-portret" src="{{ v.character|default:v.aanvrager|portret }}" alt="">
-                            <span><strong>{{ v.aanvrager|naam }}</strong>: {{ v.wat }} · {{ v.van }} <i class="fas fa-arrow-right ml-dim"></i> {{ v.naar }}
-                                <span class="ml-dim">({% if v.volume_m3 %}{{ v.volume_m3|m3 }} m³{% endif %}{% if v.volume_m3 and v.schepen %}, {% endif %}{% if v.schepen %}{{ v.schepen }} schip{{ v.schepen|pluralize:"en" }}{% endif %})</span></span>
+                            <span><strong>{{ v.aanvrager|naam }}</strong>{% if v.volume_m3 %} · {{ v.volume_m3|m3 }} m³{% endif %}
+                                {% if v.opmerking %}<span class="ml-dim">· {{ v.opmerking }}</span>{% endif %}</span>
                             <span class="ml-status ml-status-{{ v.status }}">{{ v.get_status_display }}</span>
                             <span class="ms-auto d-flex gap-1">
                                 {% if v.status == "aangevraagd" %}
@@ -65,7 +65,7 @@
                 <div class="ml-card ml-card-eigen d-flex flex-wrap align-items-center gap-2">
                     <span class="ml-status ml-status-toegezegd">{% translate "Ik neem mee" %}</span>
                     <img class="ml-portret" src="{{ v.character|default:v.aanvrager|portret }}" alt="">
-                    <span><strong>{{ v.aanvrager|naam }}</strong>: {{ v.wat }} · {{ v.van }} <i class="fas fa-arrow-right ml-dim"></i> {{ v.naar }}</span>
+                    <span><strong>{{ v.aanvrager|naam }}</strong>: {{ v.omschrijving }}</span>
                     <span class="ms-auto d-flex gap-1">
                         <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'afgeleverd' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success">{% translate "Afgeleverd" %}</button></form>
                         <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'terugtrekken' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "Toch niet" %}</button></form>
@@ -76,7 +76,7 @@
             {% for v in mijn_vragen %}
                 <div class="ml-card ml-card-eigen d-flex flex-wrap align-items-center gap-2">
                     <span class="ml-status ml-status-{{ v.status }}">{{ v.get_status_display }}</span>
-                    <span><strong>{{ v.wat }}</strong> · {{ v.van }} <i class="fas fa-arrow-right ml-dim"></i> {{ v.naar }}</span>
+                    <span><strong>{{ v.omschrijving }}</strong></span>
                     {% if v.vervoerder %}<span class="ml-dim">{% translate "door" %} {{ v.vervoerder|naam }}</span>
                     {% elif v.rit %}<span class="ml-dim">{% translate "gevraagd bij" %} {{ v.rit.piloot|naam }}</span>{% endif %}
                     <span class="ms-auto d-flex gap-1">
@@ -91,13 +91,11 @@
     {% endif %}
 
     <form class="d-flex flex-wrap gap-2 mb-3" method="get">
-        <input class="form-control ml-zoek" type="search" name="q" value="{{ q }}" placeholder="{% translate 'Zoek op systeem…' %}" list="ml-systemen" data-ml-systeem="1" autocomplete="off">
         <select class="form-select ml-filter" name="schip" onchange="this.form.submit()">
             <option value="">{% translate "Alle schepen" %}</option>
             {% for waarde, label in schip_types %}<option value="{{ waarde }}" {% if waarde == schip %}selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
-        <button class="btn btn-outline-light">{% translate "Zoek" %}</button>
-        {% if q or schip %}<a class="btn btn-link" href="{% url 'meeliften:index' %}">{% translate "Wis" %}</a>{% endif %}
+        {% if schip %}<a class="btn btn-link" href="{% url 'meeliften:index' %}">{% translate "Wis" %}</a>{% endif %}
     </form>
 
     <div class="row g-3">
@@ -144,14 +142,8 @@
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <img class="ml-portret" src="{{ v.character|default:v.aanvrager|portret }}" alt="">
                         <div class="me-auto">
-                            <div><strong>{{ v.van }} <i class="fas fa-arrow-right ml-dim"></i> {{ v.naar }}</strong></div>
-                            <div class="small">{{ v.wat }}</div>
-                            <div class="small ml-dim">
-                                {% if v.character %}{{ v.character.character_name }}{% else %}{{ v.aanvrager|naam }}{% endif %}
-                                {% if v.volume_m3 %} · {{ v.volume_m3|m3 }} m³{% endif %}
-                                {% if v.schepen %} · {{ v.schepen }} schip{{ v.schepen|pluralize:"en" }}{% endif %}
-                                {% if v.uiterlijk %} · {% translate "uiterlijk" %} {{ v.uiterlijk|date:"j M" }}{% endif %}
-                            </div>
+                            <div><strong>{% if v.character %}{{ v.character.character_name }}{% else %}{{ v.aanvrager|naam }}{% endif %}</strong></div>
+                            {% if v.volume_m3 %}<div class="ml-vrij">{{ v.volume_m3|m3 }} m³</div>{% endif %}
                         </div>
                         {% if v.aanvrager != request.user %}
                             <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'meenemen' %}">{% csrf_token %}<button class="btn btn-sm ml-btn-aanbod">{% translate "Ik neem het mee" %}</button></form>

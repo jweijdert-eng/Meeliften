@@ -17,28 +17,3 @@
     </div>
 {% endblock %}
 
-{% block extra_javascript %}
-    <datalist id="ml-systemen"></datalist>
-    <script>
-    (() => {
-        const aanvullen = (selector, lijstId, url, sleutel) => {
-            const lijst = document.getElementById(lijstId);
-            let timer;
-            document.querySelectorAll(selector).forEach((veld) => {
-                veld.addEventListener("input", () => {
-                    clearTimeout(timer);
-                    const q = veld.value.trim();
-                    if (q.length < 2) return;
-                    timer = setTimeout(async () => {
-                        const r = await fetch(url + "?q=" + encodeURIComponent(q));
-                        if (!r.ok) return;
-                        const namen = (await r.json())[sleutel];
-                        lijst.replaceChildren(...namen.map((n) => Object.assign(document.createElement("option"), { value: n })));
-                    }, 200);
-                });
-            });
-        };
-        aanvullen("[data-ml-systeem]", "ml-systemen", "{% url 'meeliften:systemen' %}", "systemen");
-    })();
-    </script>
-{% endblock extra_javascript %}

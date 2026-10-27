@@ -14,5 +14,4 @@ urlpatterns = [
     path("rit/<int:rit_id>/plekje/", views.vraag_form, name="plekje"),
     path("vraag/nieuw/", views.vraag_form, name="vraag_nieuw"),
     path("vraag/<int:vraag_id>/<str:actie>/", views.vraag_actie, name="vraag_actie"),
-    path("systemen/", views.systemen, name="systemen"),
 ]
