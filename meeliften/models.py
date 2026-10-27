@@ -77,9 +77,7 @@ class Rit(models.Model):
     schip_type = models.CharField(max_length=10, choices=SchipType.choices, default=SchipType.JF)
     schip_id = models.PositiveIntegerField(null=True, blank=True, help_text=_("EVE type-id van het schip"))
     vrij_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Vrije cargo / fleet hangar in m³"))
-    vrij_schepen = models.PositiveSmallIntegerField(
-        null=True, blank=True, help_text=_("Aantal schepen dat nog in de ship maintenance bay past")
-    )
+    vrij_smb_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Vrije ship maintenance bay in m³"))
     opmerking = models.TextField(blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
     aangemaakt = models.DateTimeField(auto_now_add=True)
@@ -121,18 +119,18 @@ class Rit(models.Model):
         return self.vragen.filter(status=Vraag.Status.TOEGEZEGD)
 
     def bezet(self) -> tuple[int, int]:
-        """(m³, schepen) die al aan deze rit zijn toegezegd."""
-        m3 = schepen = 0
+        """(cargo-m³, SMB-m³) die al aan deze rit zijn toegezegd."""
+        m3 = smb = 0
         for v in self.toegezegd:
             m3 += v.volume_m3 or 0
-            schepen += v.schepen or 0
-        return m3, schepen
+            smb += v.smb_m3 or 0
+        return m3, smb
 
     def nog_vrij(self) -> tuple[int | None, int | None]:
-        m3, schepen = self.bezet()
+        m3, smb = self.bezet()
         return (
             None if self.vrij_m3 is None else max(self.vrij_m3 - m3, 0),
-            None if self.vrij_schepen is None else max(self.vrij_schepen - schepen, 0),
+            None if self.vrij_smb_m3 is None else max(self.vrij_smb_m3 - smb, 0),
         )
 
 
@@ -156,7 +154,7 @@ class Vraag(models.Model):
     character = models.ForeignKey(EveCharacter, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     soort = models.CharField(max_length=12, choices=Soort.choices, default=Soort.ITEMS)
     volume_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Losse items en gerepackagede schepen"))
-    schepen = models.PositiveSmallIntegerField(null=True, blank=True, help_text=_("Gefitte schepen (ship maintenance bay)"))
+    smb_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Gefitte schepen (ship maintenance bay), in m³"))
     opmerking = models.TextField(blank=True)
     rit = models.ForeignKey(Rit, on_delete=models.SET_NULL, null=True, blank=True, related_name="vragen")
     vervoerder = models.ForeignKey(
@@ -179,8 +177,8 @@ class Vraag(models.Model):
     def omschrijving(self) -> str:
         """Korte tekst voor meldingen: '40.000 m³ losse items — Ishtar + ammo'."""
         delen = []
-        if self.soort == self.Soort.GEFIT and self.schepen:
-            delen.append("1 gefit schip" if self.schepen == 1 else f"{self.schepen} gefitte schepen")
+        if self.soort == self.Soort.GEFIT and self.smb_m3:
+            delen.append(f"{self.smb_m3:,} m³ gefit schip".replace(",", "."))
         elif self.volume_m3:
             soort = "losse items" if self.soort == self.Soort.ITEMS else "gerepackaged schip"
             delen.append(f"{self.volume_m3:,} m³ {soort}".replace(",", "."))

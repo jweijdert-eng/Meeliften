@@ -23,8 +23,8 @@
                             <div><strong>{% translate "Jouw" %} {{ rit.schip_naam }}</strong>
                                 {% if rit.status != "open" %}<span class="ml-status ml-status-{{ rit.status }}">{{ rit.get_status_display }}</span>{% endif %}</div>
                             <div class="ml-vrij small">
-                                {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} {% translate "van" %} {{ rit.vrij_m3|m3 }} m³ {% translate "vrij" %}{% endif %}
-                                {% if rit.vrij_schepen is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}{{ vrij.1 }} {% translate "van" %} {{ rit.vrij_schepen }} SMB-plekken {% translate "vrij" %}{% endif %}
+                                {% if rit.vrij_m3 is not None %}{% translate "Cargo" %}: {{ vrij.0|m3 }} {% translate "van" %} {{ rit.vrij_m3|m3 }} m³ {% translate "vrij" %}{% endif %}
+                                {% if rit.vrij_smb_m3 is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}SMB: {{ vrij.1|m3 }} {% translate "van" %} {{ rit.vrij_smb_m3|m3 }} m³ {% translate "vrij" %}{% endif %}
                             </div>
                         </div>
                         <a class="btn btn-sm btn-outline-light" href="{% url 'meeliften:rit_bewerk' rit.pk %}">{% translate "Bewerken" %}</a>
@@ -96,8 +96,8 @@
                     </div>
                 </div>
                 <div class="text-end">
-                    {% if rit.vrij_m3 is not None %}<div class="ml-vrij">{{ vrij.0|m3 }} m³ <span class="ml-dim small">{% translate "vrij" %}</span></div>{% endif %}
-                    {% if rit.vrij_schepen is not None %}<div class="ml-vrij">{{ vrij.1 }} SMB <span class="ml-dim small">{% translate "voor gefitte schepen" %}</span></div>{% endif %}
+                    {% if rit.vrij_m3 is not None %}<div class="ml-vrij">{{ vrij.0|m3 }} m³ <span class="ml-dim small">{% translate "cargo" %}</span></div>{% endif %}
+                    {% if rit.vrij_smb_m3 is not None %}<div class="ml-vrij">{{ vrij.1|m3 }} m³ <span class="ml-dim small">SMB {% translate "(gefitte schepen)" %}</span></div>{% endif %}
                 </div>
                 {% if rit.piloot == request.user %}
                     <span class="ml-dim small">{% translate "jouw schip" %}</span>
@@ -119,7 +119,7 @@
                     <div class="d-flex flex-wrap gap-2 align-items-start">
                         <div class="ml-hoeveel">
                             {{ f.hoeveel }}
-                            <div class="form-text ml-dim" data-ml-eenheid>m³</div>
+                            <div class="form-text ml-dim" data-ml-eenheid>{% translate "m³ in de cargo" %}</div>
                         </div>
                         <div class="flex-grow-1">{{ f.opmerking }}</div>
                         <button class="btn ml-btn-vraag">{% translate "Verstuur" %}</button>
@@ -141,7 +141,7 @@
         const zet = () => {
             const gekozen = form.querySelector("[data-ml-soort] input:checked");
             const gefit = gekozen && gekozen.value === "gefit";
-            eenheid.textContent = gefit ? "{% translate 'aantal schepen' %}" : "m³";
+            eenheid.textContent = gefit ? "{% translate 'm³ opgebouwd (Show Info)' %}" : "{% translate 'm³ in de cargo' %}";
         };
         form.querySelectorAll("[data-ml-soort] input").forEach((r) => r.addEventListener("change", zet));
         zet();

@@ -39,7 +39,7 @@ class Basis(TestCase):
         cls.buiten = AuthUtils.create_user("ml_buiten")
 
     def rit(self, **kw) -> Rit:
-        data = dict(piloot=self.piloot, schip_id=28850, vrij_m3=300_000, vrij_schepen=None)
+        data = dict(piloot=self.piloot, schip_id=28850, vrij_m3=300_000, vrij_smb_m3=None)
         data.update(kw)
         return Rit.objects.create(**data)
 
@@ -76,8 +76,8 @@ class TestBord(Basis):
 
     def test_alleen_passende_soorten(self):
         cargo = self.rit()
-        smb = self.rit(schip_id=23911, vrij_m3=None, vrij_schepen=3)
-        beide = self.rit(schip_id=23913, vrij_m3=10_000, vrij_schepen=2)
+        smb = self.rit(schip_id=23911, vrij_m3=None, vrij_smb_m3=1_000_000)
+        beide = self.rit(schip_id=23913, vrij_m3=10_000, vrij_smb_m3=500_000)
         r = client(self.ander).get(reverse("meeliften:index"))
         soorten = {rit.pk: [w for w, _ in rit.vraag_form.fields["soort"].choices] for rit in r.context["ritten"]}
         self.assertEqual(soorten[cargo.pk], ["items", "repackaged"])
@@ -85,7 +85,7 @@ class TestBord(Basis):
         self.assertEqual(soorten[beide.pk], ["items", "repackaged", "gefit"])
 
     def test_ruimte_zonder_m3_en_smb_breekt_het_bord_niet(self):
-        self.rit(vrij_m3=None, vrij_schepen=None)  # kan via de admin
+        self.rit(vrij_m3=None, vrij_smb_m3=None)  # kan via de admin
         self.assertEqual(client(self.ander).get(reverse("meeliften:index")).status_code, 200)
 
     def test_eigen_ruimte_geen_knop(self):
@@ -104,11 +104,11 @@ class TestBord(Basis):
 class TestRit(Basis):
     def test_ruimte_aanbieden(self):
         r = self.post(self.piloot, "rit_nieuw", data={
-            "character": self.piloot.profile.main_character.pk, "schip_id": 23911, "vrij_schepen": 3,
+            "character": self.piloot.profile.main_character.pk, "schip_id": 23911, "vrij_smb_m3": 1_000_000,
         })
         self.assertEqual(r.status_code, 302)
         rit = Rit.objects.get()
-        self.assertEqual((rit.schip_naam, rit.schip_type, rit.vrij_schepen), ("Thanatos", "carrier", 3))
+        self.assertEqual((rit.schip_naam, rit.schip_type, rit.vrij_smb_m3), ("Thanatos", "carrier", 1_000_000))
 
     def test_zonder_ruimte_geweigerd(self):
         self.assertEqual(self.post(self.piloot, "rit_nieuw", data={"schip_id": 28850}).status_code, 200)
@@ -153,7 +153,7 @@ class TestIkWilMee(Basis):
         rit = self.rit()
         self.assertEqual(self.wil_mee(rit).status_code, 302)
         vraag = Vraag.objects.get()
-        self.assertEqual((vraag.status, vraag.soort, vraag.volume_m3, vraag.schepen), ("aangevraagd", "items", 50_000, None))
+        self.assertEqual((vraag.status, vraag.soort, vraag.volume_m3, vraag.smb_m3), ("aangevraagd", "items", 50_000, None))
         self.assertEqual(vraag.character, self.vrager.profile.main_character)
         melding = Notification.objects.get(user=self.piloot, title__contains="wil mee")
         self.assertIn("50.000 m³ losse items — Muninn + ammo", melding.message)
@@ -173,20 +173,20 @@ class TestIkWilMee(Basis):
         rit = self.rit()
         self.wil_mee(rit, soort="repackaged", hoeveel=120_000, opmerking="Raven")
         vraag = Vraag.objects.get()
-        self.assertEqual((vraag.volume_m3, vraag.schepen), (120_000, None))
+        self.assertEqual((vraag.volume_m3, vraag.smb_m3), (120_000, None))
         self.assertEqual(vraag.omschrijving, "120.000 m³ gerepackaged schip — Raven")
 
     def test_gefit_schip_telt_in_smb(self):
-        rit = self.rit(schip_id=23911, vrij_m3=None, vrij_schepen=3)
-        self.wil_mee(rit, soort="gefit", hoeveel=2, opmerking="Ishtar")
+        rit = self.rit(schip_id=23911, vrij_m3=None, vrij_smb_m3=1_000_000)
+        self.wil_mee(rit, soort="gefit", hoeveel=115_000, opmerking="Ishtar")
         vraag = Vraag.objects.get()
-        self.assertEqual((vraag.schepen, vraag.volume_m3), (2, None))
-        self.assertEqual(vraag.omschrijving, "2 gefitte schepen — Ishtar")
+        self.assertEqual((vraag.smb_m3, vraag.volume_m3), (115_000, None))
+        self.assertEqual(vraag.omschrijving, "115.000 m³ gefit schip — Ishtar")
         self.post(self.piloot, "vraag_actie", vraag.pk, "ja")
-        self.assertEqual(rit.nog_vrij(), (None, 1))
+        self.assertEqual(rit.nog_vrij(), (None, 885_000))
 
     def test_soort_die_niet_past_geweigerd(self):
-        smb = self.rit(schip_id=23911, vrij_m3=None, vrij_schepen=3)
+        smb = self.rit(schip_id=23911, vrij_m3=None, vrij_smb_m3=1_000_000)
         self.assertEqual(self.wil_mee(smb, soort="items", hoeveel=5).status_code, 200)
         cargo = self.rit()
         self.wil_mee(cargo, soort="gefit", hoeveel=1)
@@ -194,7 +194,7 @@ class TestIkWilMee(Basis):
 
     def test_meer_dan_vrij_geweigerd(self):
         self.wil_mee(self.rit(vrij_m3=10_000))
-        self.wil_mee(self.rit(vrij_m3=None, vrij_schepen=1), soort="gefit", hoeveel=2)
+        self.wil_mee(self.rit(vrij_m3=None, vrij_smb_m3=100_000), soort="gefit", hoeveel=115_000)
         self.assertFalse(Vraag.objects.exists())
 
     def test_hoeveel_verplicht(self):

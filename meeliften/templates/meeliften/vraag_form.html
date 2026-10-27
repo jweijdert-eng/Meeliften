@@ -11,8 +11,8 @@
             {% if rit.icoon %}<img class="ml-icoon float-start me-2" src="{{ rit.icoon }}" alt="">{% endif %}
             {{ rit.schip_naam }} {% translate "van" %} {{ rit.piloot|naam }}<br>
             {% translate "Nog vrij" %}:
-            {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} m³{% endif %}
-            {% if rit.vrij_schepen is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}{{ vrij.1 }} SMB{% endif %}
+            {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} m³ cargo{% endif %}
+            {% if rit.vrij_smb_m3 is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}{{ vrij.1|m3 }} m³ SMB{% endif %}
         </p>
         {% endwith %}
         <form method="post">
@@ -25,7 +25,7 @@
                 <div class="col-md-4">
                     <label class="form-label" for="{{ form.hoeveel.id_for_label }}">{{ form.hoeveel.label }}</label>
                     {{ form.hoeveel }}
-                    <div class="form-text ml-dim">{% translate "m³, of het aantal schepen bij een gefit schip" %}</div>
+                    <div class="form-text ml-dim">{% translate "Bij een gefit schip: het opgebouwde volume (staat in Show Info)" %}</div>
                     {% for fout in form.hoeveel.errors %}<div class="text-danger small">{{ fout }}</div>{% endfor %}
                 </div>
                 <div class="col-md-8">

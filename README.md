@@ -10,7 +10,7 @@ Alles wordt door de leden zelf ingevuld; er zijn geen ESI-scopes nodig.
 
 ## Zo werkt het
 
-- **Ruimte aanbieden**: kies het schip uit de lijst (alle capitals, met icoontje), vrije m³ en/of vrije SMB-plekken.
+- **Ruimte aanbieden**: kies het schip uit de lijst (alle capitals, met icoontje), vrije m³ in de cargo en/of in de SMB.
 - **Plekje vragen** bij een piloot (m³ en/of een opmerking): de piloot krijgt een AA-melding en accepteert of weigert.
   Geweigerd? Dan staat de vraag los op het bord voor een andere piloot.
 - **Vervoer zoeken** zonder rit: een piloot klikt *Ik neem het mee*.
