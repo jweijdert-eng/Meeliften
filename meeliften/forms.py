@@ -42,7 +42,7 @@ class RitForm(_EigenCharacterForm):
             "vrij_smb_m3": _("Voor gefitte schepen. Leeg laten als je geen ship maintenance bay hebt."),
         }
         widgets = {
-            "opmerking": forms.Textarea(attrs={"rows": 2, "placeholder": _("Bijv. 'alleen gepackagede schepen', 'via Thera'")}),
+            "opmerking": forms.Textarea(attrs={"rows": 2, "placeholder": _("Bijv. 'alleen gepackagede schepen'")}),
         }
 
     schip_id = forms.TypedChoiceField(label=_("Schip"), coerce=int, choices=keuzes,
