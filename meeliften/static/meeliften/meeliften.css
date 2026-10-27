@@ -58,6 +58,30 @@
     margin-top: .5rem; padding: .4rem .5rem; border-radius: 6px; background: var(--ml-surface-2);
 }
 .ml-app .ml-filter { max-width: 200px; }
+
+/* Invoervelden in hetzelfde donkere palet als de kaarten */
+.ml-app .form-control,
+.ml-app .form-select {
+    background-color: var(--ml-surface-2);
+    color: var(--ml-text);
+    border: 1px solid #2a2a4a;
+}
+.ml-app .form-control::placeholder { color: var(--ml-dim); opacity: .8; }
+.ml-app .form-control:focus,
+.ml-app .form-select:focus {
+    background-color: #181836;
+    color: var(--ml-text);
+    border-color: var(--ml-blue);
+    box-shadow: 0 0 0 .2rem rgba(0, 180, 216, .2);
+}
+.ml-app .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23e1e4f0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+.ml-app .form-select option,
+.ml-app .form-select optgroup { background-color: var(--ml-surface); color: var(--ml-text); }
+.ml-app .form-check-input,
+.ml-app .ml-keuze input[type=radio] { accent-color: var(--ml-blue); }
+.ml-app input[type=number]::-webkit-inner-spin-button { filter: invert(.85); }
 .ml-app .ml-icoon-klein { width: 32px; height: 32px; }
 .ml-app .ml-mee {
     margin-top: .6rem; padding: .6rem .7rem; border-radius: 6px;
