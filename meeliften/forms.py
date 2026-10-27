@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from allianceauth.eveonline.models import EveCharacter
 
 from .models import Rit, Vraag
-from .schepen import herken
+from .schepen import keuzes
 
 
 class _EigenCharacterForm(forms.ModelForm):
@@ -39,11 +39,9 @@ class _EigenCharacterForm(forms.ModelForm):
 class RitForm(_EigenCharacterForm):
     class Meta:
         model = Rit
-        fields = ["character", "schip_type", "schip_naam", "vrij_m3", "vrij_schepen", "opmerking"]
+        fields = ["character", "schip_id", "vrij_m3", "vrij_schepen", "opmerking"]
         labels = {
             "character": _("Piloot"),
-            "schip_type": _("Schip"),
-            "schip_naam": _("Scheepstype / naam"),
             "vrij_m3": _("Vrij (m³)"),
             "vrij_schepen": _("Vrije SMB-plekken"),
         }
@@ -51,9 +49,8 @@ class RitForm(_EigenCharacterForm):
             "opmerking": forms.Textarea(attrs={"rows": 2, "placeholder": _("Bijv. 'alleen gepackagede schepen', 'via Thera'")}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["schip_naam"].widget.attrs.update({"list": "ml-schepen", "autocomplete": "off", "data-ml-schip": "1"})
+    schip_id = forms.TypedChoiceField(label=_("Schip"), coerce=int, choices=keuzes,
+                                      widget=forms.Select(attrs={"class": "form-select"}))
 
     def clean(self):
         data = super().clean()
@@ -61,15 +58,6 @@ class RitForm(_EigenCharacterForm):
             raise forms.ValidationError(_("Vul vrije m³ of vrije SMB-plekken in (of allebei)."))
         return data
 
-    def save(self, commit=True):
-        rit = super().save(commit=False)
-        # Herkend scheepstype → eigen icoontje, en de klasse volgt het schip ('Nyx' is altijd een super).
-        rit.schip_type_id, klasse = herken(rit.schip_naam)
-        if klasse:
-            rit.schip_type = klasse
-        if commit:
-            rit.save()
-        return rit
 
 
 class VraagForm(_EigenCharacterForm):

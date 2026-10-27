@@ -16,7 +16,7 @@ class VraagInline(admin.TabularInline):
 class RitAdmin(admin.ModelAdmin):
     list_display = ("__str__", "piloot", "vrij_m3", "vrij_schepen", "status", "aangemaakt")
     list_filter = ("status", "schip_type")
-    search_fields = ("schip_naam", "piloot__username")
+    search_fields = ("piloot__username",)
     inlines = [VraagInline]
 
 

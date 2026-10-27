@@ -19,7 +19,6 @@
 
 {% block extra_javascript %}
     <datalist id="ml-systemen"></datalist>
-    <datalist id="ml-schepen"></datalist>
     <script>
     (() => {
         const aanvullen = (selector, lijstId, url, sleutel) => {
@@ -40,7 +39,6 @@
             });
         };
         aanvullen("[data-ml-systeem]", "ml-systemen", "{% url 'meeliften:systemen' %}", "systemen");
-        aanvullen("[data-ml-schip]", "ml-schepen", "{% url 'meeliften:schepen' %}", "schepen");
     })();
     </script>
 {% endblock extra_javascript %}

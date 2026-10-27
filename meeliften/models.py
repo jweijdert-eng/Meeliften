@@ -44,7 +44,7 @@ class SchipType(models.TextChoices):
     ANDERS = "anders", _("Anders")
 
 
-# Icoontje als de piloot geen (herkenbaar) scheepstype invult: een bekend schip per klasse.
+# Icoontje per klasse: een bekend schip uit die klasse.
 STANDAARD_ICOON = {
     SchipType.JF: 28850,        # Ark
     SchipType.CARRIER: 23911,   # Thanatos
@@ -76,8 +76,7 @@ class Rit(models.Model):
     piloot = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meeliften_ritten")
     character = models.ForeignKey(EveCharacter, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     schip_type = models.CharField(max_length=10, choices=SchipType.choices, default=SchipType.JF)
-    schip_naam = models.CharField(max_length=60, blank=True, help_text=_("Bijv. Ark, Nyx, Revelation"))
-    schip_type_id = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    schip_id = models.PositiveIntegerField(null=True, blank=True, help_text=_("EVE type-id van het schip"))
     vrij_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Vrije cargo / fleet hangar in m³"))
     vrij_schepen = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text=_("Aantal schepen dat nog in de ship maintenance bay past")
@@ -95,11 +94,25 @@ class Rit(models.Model):
         verbose_name_plural = _("ritten")
 
     def __str__(self) -> str:
-        return self.schip_naam or self.get_schip_type_display()
+        return self.schip_naam
+
+    def save(self, *args, **kwargs):
+        # De klasse volgt het gekozen schip, zodat het filter op klasse blijft werken.
+        from .schepen import PER_ID
+
+        if self.schip_id in PER_ID:
+            self.schip_type = PER_ID[self.schip_id][1]
+        super().save(*args, **kwargs)
+
+    @property
+    def schip_naam(self) -> str:
+        from .schepen import PER_ID
+
+        return PER_ID[self.schip_id][0] if self.schip_id in PER_ID else self.get_schip_type_display()
 
     @property
     def icoon(self) -> str:
-        type_id = self.schip_type_id or STANDAARD_ICOON.get(self.schip_type)
+        type_id = self.schip_id or STANDAARD_ICOON.get(self.schip_type)
         if not type_id:
             return ""
         return f"https://images.evetech.net/types/{type_id}/icon?size=64"

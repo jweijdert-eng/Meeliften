@@ -2,7 +2,6 @@
 manage.py test meeliften --keepdb --noinput"""
 
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -40,7 +39,7 @@ class Basis(TestCase):
         cls.buiten = AuthUtils.create_user("ml_buiten")
 
     def rit(self, **kw) -> Rit:
-        data = dict(piloot=self.piloot, schip_type="jf", schip_naam="Ark", vrij_m3=300_000, vrij_schepen=None)
+        data = dict(piloot=self.piloot, schip_id=28850, vrij_m3=300_000, vrij_schepen=None)
         data.update(kw)
         return Rit.objects.create(**data)
 
@@ -59,6 +58,8 @@ class TestToegang(Basis):
         r = client(self.ander).get(reverse("meeliften:index"))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "Ark")
+        self.assertContains(r, "Jump Freighter")
+        self.assertContains(r, "/types/28850/")
         self.assertContains(r, "Q-02UL")
         self.assertContains(r, "Ishtar")
         self.assertContains(r, "300.000")
@@ -79,15 +80,17 @@ class TestToegang(Basis):
 class TestRit(Basis):
     def test_rit_aanbieden(self):
         r = self.post(self.piloot, "rit_nieuw", data={
-            "character": self.piloot.profile.main_character.pk, "schip_type": "carrier", "schip_naam": "Thanatos",
+            "character": self.piloot.profile.main_character.pk, "schip_id": 23911,
             "vrij_schepen": 3,
         })
         self.assertEqual(r.status_code, 302)
         rit = Rit.objects.get()
         self.assertEqual((rit.piloot, rit.vrij_schepen, rit.vrij_m3), (self.piloot, 3, None))
+        self.assertEqual((rit.schip_naam, rit.schip_type), ("Thanatos", "carrier"))
+        self.assertIn("/types/23911/", rit.icoon)
 
     def test_rit_zonder_ruimte_geweigerd(self):
-        r = self.post(self.piloot, "rit_nieuw", data={"schip_type": "jf"})
+        r = self.post(self.piloot, "rit_nieuw", data={"schip_id": 28850})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(Rit.objects.exists())
 
@@ -95,19 +98,24 @@ class TestRit(Basis):
         self.post(self.vrager, "vraag_nieuw", data={"van": "Jita", "naar": "jita", "wat": "x", "volume_m3": 5, "schepen": 0})
         self.assertFalse(Vraag.objects.exists())
 
-    def test_standaard_icoon_per_klasse(self):
-        self.assertIn("/types/28850/", self.rit().icoon)
-        self.assertIn("/types/11567/", self.rit(schip_type="titan").icoon)
-        self.assertEqual(self.rit(schip_type="anders").icoon, "")
-
-    def test_herkend_schip_geeft_eigen_icoon_en_klasse(self):
-        with patch("meeliften.forms.herken", return_value=(23913, "super")):
-            self.post(self.piloot, "rit_nieuw", data={
-                "schip_type": "carrier", "schip_naam": "Nyx", "vrij_schepen": 2,
-            })
-        rit = Rit.objects.get()
-        self.assertEqual((rit.schip_type, rit.schip_type_id), ("super", 23913))
+    def test_icoon_en_klasse_volgen_het_schip(self):
+        rit = self.rit(schip_id=23913)
+        self.assertEqual((rit.schip_naam, rit.schip_type), ("Nyx", "super"))
         self.assertIn("/types/23913/", rit.icoon)
+        oud = self.rit(schip_id=None, schip_type="titan")
+        self.assertEqual(oud.schip_naam, "Titan")
+        self.assertIn("/types/11567/", oud.icoon)
+
+    def test_onbekend_schip_geweigerd(self):
+        r = self.post(self.piloot, "rit_nieuw", data={"schip_id": 587, "vrij_m3": 5})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Rit.objects.exists())
+
+    def test_dropdown_heeft_scheepsnamen(self):
+        r = client(self.piloot).get(reverse("meeliften:rit_nieuw"))
+        self.assertContains(r, '<optgroup label="Jump Freighter">')
+        self.assertContains(r, ">Anshar</option>")
+        self.assertContains(r, ">Komodo</option>")
 
     def test_oude_ritten_verdwijnen(self):
         oud = self.rit()

@@ -10,7 +10,7 @@
             <h5 class="mb-1">{% translate "Plekje vragen" %}</h5>
             <p class="ml-dim small mb-3">
                 {% if rit.icoon %}<img class="ml-icoon float-start me-2" src="{{ rit.icoon }}" alt="">{% endif %}
-                {{ rit.get_schip_type_display }}{% if rit.schip_naam %} ({{ rit.schip_naam }}){% endif %}
+                {{ rit.schip_naam }} ({{ rit.get_schip_type_display }})
                 {% translate "van" %} {{ rit.piloot|naam }}<br>
                 {% translate "Nog vrij" %}:
                 {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} m³{% endif %}
