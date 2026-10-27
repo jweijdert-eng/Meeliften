@@ -95,10 +95,12 @@ class Rit(models.Model):
 
     def save(self, *args, **kwargs):
         # De klasse volgt het gekozen schip, zodat het filter op klasse blijft werken.
-        from .schepen import PER_ID
+        from .schepen import PER_ID, ZONDER_SMB
 
         if self.schip_id in PER_ID:
             self.schip_type = PER_ID[self.schip_id][1]
+        if self.schip_type in ZONDER_SMB:
+            self.vrij_smb_m3 = None
         super().save(*args, **kwargs)
 
     @property

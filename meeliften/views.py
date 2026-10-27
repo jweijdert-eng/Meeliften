@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from . import meldingen
 from .forms import RitForm, VraagForm
 from .models import GEEN_PLEK_DAGEN, Rit, SchipType, Vraag
+from .schepen import ZONDER_SMB_IDS
 
 
 def _beheerder(user) -> bool:
@@ -74,7 +75,7 @@ def rit_form(request: WSGIRequest, rit_id: int | None = None) -> HttpResponse:
         nieuw.save()
         messages.success(request, _("Opgeslagen."))
         return redirect("meeliften:index")
-    return render(request, "meeliften/rit_form.html", {"form": form, "rit": rit})
+    return render(request, "meeliften/rit_form.html", {"form": form, "rit": rit, "zonder_smb_ids": ZONDER_SMB_IDS})
 
 
 @login_required

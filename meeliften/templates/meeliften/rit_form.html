@@ -16,3 +16,22 @@
         </form>
     </div>
 {% endblock %}
+
+{% block extra_javascript %}
+    {{ zonder_smb_ids|json_script:"ml-zonder-smb" }}
+    <script>
+    (() => {
+        const zonderSmb = JSON.parse(document.getElementById("ml-zonder-smb").textContent).map(String);
+        const schip = document.getElementById("id_schip_id");
+        const blok = document.getElementById("veld-vrij_smb_m3");
+        if (!schip || !blok) return;
+        const zet = () => {
+            const geen = zonderSmb.includes(schip.value);
+            blok.hidden = geen;
+            if (geen) blok.querySelector("input").value = "";
+        };
+        schip.addEventListener("change", zet);
+        zet();
+    })();
+    </script>
+{% endblock extra_javascript %}

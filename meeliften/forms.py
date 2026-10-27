@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from allianceauth.eveonline.models import EveCharacter
 
 from .models import Rit, Vraag
-from .schepen import keuzes
+from .schepen import PER_ID, ZONDER_SMB, keuzes
 
 
 class _EigenCharacterForm(forms.ModelForm):
@@ -50,6 +50,8 @@ class RitForm(_EigenCharacterForm):
 
     def clean(self):
         data = super().clean()
+        if PER_ID.get(data.get("schip_id"), (None, None))[1] in ZONDER_SMB:
+            data["vrij_smb_m3"] = None
         if not data.get("vrij_m3") and not data.get("vrij_smb_m3"):
             raise forms.ValidationError(_("Vul vrije m³ in de cargo of in de SMB in (of allebei)."))
         return data

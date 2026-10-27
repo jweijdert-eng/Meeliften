@@ -110,6 +110,19 @@ class TestRit(Basis):
         rit = Rit.objects.get()
         self.assertEqual((rit.schip_naam, rit.schip_type, rit.vrij_smb_m3), ("Thanatos", "carrier", 1_000_000))
 
+    def test_jf_heeft_geen_smb(self):
+        self.post(self.piloot, "rit_nieuw", data={"schip_id": 28846, "vrij_m3": 300_000, "vrij_smb_m3": 250})
+        rit = Rit.objects.get()
+        self.assertEqual((rit.schip_naam, rit.vrij_smb_m3), ("Nomad", None))
+        r = client(self.piloot).get(reverse("meeliften:rit_nieuw"))
+        self.assertIn(28846, r.context["zonder_smb_ids"])
+        self.assertNotIn(23911, r.context["zonder_smb_ids"])
+
+    def test_jf_met_alleen_smb_geweigerd(self):
+        r = self.post(self.piloot, "rit_nieuw", data={"schip_id": 28846, "vrij_smb_m3": 250})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Rit.objects.exists())
+
     def test_zonder_ruimte_geweigerd(self):
         self.assertEqual(self.post(self.piloot, "rit_nieuw", data={"schip_id": 28850}).status_code, 200)
         self.assertFalse(Rit.objects.exists())

@@ -62,6 +62,10 @@ SCHEPEN = [
 
 PER_ID = {type_id: (naam, klasse) for type_id, naam, klasse in SCHEPEN}
 
+# Klassen zonder ship maintenance bay: daar vragen we geen SMB-ruimte.
+ZONDER_SMB = {"jf"}
+ZONDER_SMB_IDS = [type_id for type_id, _naam, klasse in SCHEPEN if klasse in ZONDER_SMB]
+
 
 def keuzes():
     """Gegroepeerde choices voor een <select>: [(klasse-label, [(id, naam), ...]), ...]."""
