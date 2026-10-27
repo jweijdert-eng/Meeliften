@@ -1,0 +1,41 @@
+{% extends 'allianceauth/base-bs5.html' %}
+
+{% load i18n %}
+{% load static %}
+
+{% block page_title %}{% translate "Meeliften" %}{% endblock %}
+
+{% block header_nav_brand %}{% translate "Meeliften" %}{% endblock header_nav_brand %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'meeliften/meeliften.css' %}">
+{% endblock extra_css %}
+
+{% block content %}
+    <div class="ml-app">
+        {% block details %}{% endblock %}
+    </div>
+{% endblock %}
+
+{% block extra_javascript %}
+    <datalist id="ml-systemen"></datalist>
+    <script>
+    (() => {
+        const lijst = document.getElementById("ml-systemen");
+        let timer;
+        document.querySelectorAll("[data-ml-systeem]").forEach((veld) => {
+            veld.addEventListener("input", () => {
+                clearTimeout(timer);
+                const q = veld.value.trim();
+                if (q.length < 2) return;
+                timer = setTimeout(async () => {
+                    const r = await fetch("{% url 'meeliften:systemen' %}?q=" + encodeURIComponent(q));
+                    if (!r.ok) return;
+                    const { systemen } = await r.json();
+                    lijst.replaceChildren(...systemen.map((n) => Object.assign(document.createElement("option"), { value: n })));
+                }, 200);
+            });
+        });
+    })();
+    </script>
+{% endblock extra_javascript %}

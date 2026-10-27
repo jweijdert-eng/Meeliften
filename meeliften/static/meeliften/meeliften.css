@@ -1,0 +1,74 @@
+/* Meeliften — EVE-dark thema (zelfde palet als Corp Hauling / Corp KillBoard) */
+.ml-app {
+    --ml-surface: #0f0f22;
+    --ml-surface-2: #13132b;
+    --ml-border: #1c1c35;
+    --ml-text: #e1e4f0;
+    --ml-dim: #8a90b0;
+    --ml-blue: #00b4d8;
+    --ml-gold: #f0c040;
+    --ml-green: #3ecf6e;
+    --ml-red: #e05555;
+    --ml-amber: #f0932b;
+    color: var(--ml-text);
+}
+.ml-app .ml-dim { color: var(--ml-dim); }
+.ml-app .ml-kop {
+    font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ml-dim); margin-bottom: .5rem;
+}
+
+/* Knoppen: aanbieden = goud, vragen = blauw */
+.ml-app .ml-btn-aanbod {
+    color: var(--ml-gold); border: 1px solid rgba(240, 192, 64, .55);
+    background: rgba(240, 192, 64, .12); font-weight: 700;
+}
+.ml-app .ml-btn-aanbod:hover { background: rgba(240, 192, 64, .24); color: #ffd866; }
+.ml-app .ml-btn-vraag {
+    color: var(--ml-blue); border: 1px solid rgba(0, 180, 216, .55);
+    background: rgba(0, 180, 216, .12); font-weight: 700;
+}
+.ml-app .ml-btn-vraag:hover { background: rgba(0, 180, 216, .24); color: #5fdcf5; }
+
+/* Kaarten */
+.ml-app .ml-card {
+    background: var(--ml-surface); border: 1px solid var(--ml-border);
+    border-radius: 8px; padding: .6rem .8rem; margin-bottom: .5rem;
+}
+.ml-app .ml-card-eigen { border-left: 3px solid var(--ml-gold); }
+.ml-app .ml-card-vol { opacity: .55; }
+.ml-app .ml-form { max-width: 760px; padding: 1rem 1.2rem; }
+.ml-app .ml-portret { width: 32px; height: 32px; border-radius: 50%; flex: none; }
+.ml-app .ml-vrij { font-weight: 700; color: var(--ml-green); white-space: nowrap; }
+.ml-app .ml-opmerking {
+    margin-top: .4rem; padding-top: .4rem; border-top: 1px dashed var(--ml-border);
+    font-size: .85rem; color: var(--ml-dim); white-space: pre-wrap;
+}
+.ml-app .ml-leeg {
+    padding: 1.2rem; text-align: center; color: var(--ml-dim);
+    border: 1px dashed var(--ml-border); border-radius: 8px;
+}
+.ml-app .ml-aanvraag {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    margin-top: .5rem; padding: .4rem .5rem; border-radius: 6px; background: var(--ml-surface-2);
+}
+.ml-app .ml-zoek { max-width: 260px; }
+.ml-app .ml-filter { max-width: 200px; }
+.ml-app form { margin: 0; }
+
+/* Labels */
+.ml-app .ml-schip, .ml-app .ml-status {
+    display: inline-block; padding: .05rem .45rem; border-radius: 4px;
+    font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    background: var(--ml-surface-2); border: 1px solid var(--ml-border);
+}
+.ml-app .ml-schip-jf { color: var(--ml-blue); }
+.ml-app .ml-schip-carrier, .ml-app .ml-schip-super { color: var(--ml-green); }
+.ml-app .ml-schip-dread { color: var(--ml-red); }
+.ml-app .ml-schip-fax { color: #c58cff; }
+.ml-app .ml-schip-titan { color: var(--ml-gold); }
+.ml-app .ml-schip-rorqual { color: var(--ml-amber); }
+.ml-app .ml-status-open { color: var(--ml-blue); }
+.ml-app .ml-status-vol { color: var(--ml-amber); }
+.ml-app .ml-status-aangevraagd { color: var(--ml-amber); }
+.ml-app .ml-status-toegezegd { color: var(--ml-green); }
