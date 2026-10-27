@@ -1,4 +1,4 @@
-# Meeliften
+﻿# Meeliften
 
 Een ruimte-beurs voor [Alliance Auth](https://gitlab.com/allianceauth/allianceauth).
 Capital-piloten (Jump Freighter, carrier, dread, FAX, super, titan, Rorqual) melden welk schip
@@ -21,7 +21,7 @@ Alles wordt door de leden zelf ingevuld; er zijn geen ESI-scopes nodig.
 ## Installatie
 
 ```bash
-pip install git+https://github.com/jweijdert-eng/aa-meeliften.git
+pip install git+https://github.com/jweijdert-eng/Meeliften.git
 ```
 
 Zet `'meeliften'` in `INSTALLED_APPS` (in `local.py`) en draai daarna:
