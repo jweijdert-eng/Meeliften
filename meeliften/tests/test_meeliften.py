@@ -2,6 +2,7 @@
 manage.py test meeliften --keepdb --noinput"""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -93,6 +94,20 @@ class TestRit(Basis):
     def test_van_is_naar_geweigerd(self):
         self.post(self.piloot, "rit_nieuw", data={"schip_type": "jf", "van": "Jita", "naar": "jita", "vrij_m3": 5})
         self.assertFalse(Rit.objects.exists())
+
+    def test_standaard_icoon_per_klasse(self):
+        self.assertIn("/types/28850/", self.rit().icoon)
+        self.assertIn("/types/11567/", self.rit(schip_type="titan").icoon)
+        self.assertEqual(self.rit(schip_type="anders").icoon, "")
+
+    def test_herkend_schip_geeft_eigen_icoon_en_klasse(self):
+        with patch("meeliften.forms.herken", return_value=(23913, "super")):
+            self.post(self.piloot, "rit_nieuw", data={
+                "schip_type": "carrier", "schip_naam": "Nyx", "van": "A", "naar": "B", "vrij_schepen": 2,
+            })
+        rit = Rit.objects.get()
+        self.assertEqual((rit.schip_type, rit.schip_type_id), ("super", 23913))
+        self.assertIn("/types/23913/", rit.icoon)
 
     def test_oude_ritten_verdwijnen(self):
         self.rit(vertrek=timezone.now() - timedelta(days=2))

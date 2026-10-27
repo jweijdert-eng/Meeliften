@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from . import meldingen
 from .forms import RitForm, VraagForm
 from .models import Rit, SchipType, Vraag
+from .schepen import zoek_namen
 
 
 def _beheerder(user) -> bool:
@@ -208,3 +209,11 @@ def systemen(request: WSGIRequest) -> JsonResponse:
             except Exception:  # noqa: BLE001
                 namen = []
     return JsonResponse({"systemen": namen})
+
+
+@login_required
+@permission_required("meeliften.basic_access")
+def schepen(request: WSGIRequest) -> JsonResponse:
+    """Capital-scheepsnamen voor het invulveld."""
+    q = request.GET.get("q", "").strip()
+    return JsonResponse({"schepen": zoek_namen(q) if len(q) >= 2 else []})

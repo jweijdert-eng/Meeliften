@@ -39,6 +39,11 @@
 .ml-app .ml-card-vol { opacity: .55; }
 .ml-app .ml-form { max-width: 760px; padding: 1rem 1.2rem; }
 .ml-app .ml-portret { width: 32px; height: 32px; border-radius: 50%; flex: none; }
+.ml-app .ml-portret-mini { width: 18px; height: 18px; border-radius: 50%; vertical-align: -4px; margin-right: .25rem; }
+.ml-app .ml-icoon {
+    width: 44px; height: 44px; flex: none; border-radius: 6px;
+    border: 1px solid var(--ml-border); background: var(--ml-surface-2);
+}
 .ml-app .ml-vrij { font-weight: 700; color: var(--ml-green); white-space: nowrap; }
 .ml-app .ml-opmerking {
     margin-top: .4rem; padding-top: .4rem; border-top: 1px dashed var(--ml-border);

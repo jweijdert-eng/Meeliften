@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from allianceauth.eveonline.models import EveCharacter
 
 from .models import Rit, Vraag
+from .schepen import herken
 
 
 class _EigenCharacterForm(forms.ModelForm):
@@ -52,11 +53,25 @@ class RitForm(_EigenCharacterForm):
             "opmerking": forms.Textarea(attrs={"rows": 2, "placeholder": _("Bijv. 'alleen gepackagede schepen', 'via Thera'")}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["schip_naam"].widget.attrs.update({"list": "ml-schepen", "autocomplete": "off", "data-ml-schip": "1"})
+
     def clean(self):
         data = super().clean()
         if not data.get("vrij_m3") and not data.get("vrij_schepen"):
             raise forms.ValidationError(_("Vul vrije m³ of vrije SMB-plekken in (of allebei)."))
         return data
+
+    def save(self, commit=True):
+        rit = super().save(commit=False)
+        # Herkend scheepstype → eigen icoontje, en de klasse volgt het schip ('Nyx' is altijd een super).
+        rit.schip_type_id, klasse = herken(rit.schip_naam)
+        if klasse:
+            rit.schip_type = klasse
+        if commit:
+            rit.save()
+        return rit
 
 
 class VraagForm(_EigenCharacterForm):

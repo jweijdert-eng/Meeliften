@@ -19,23 +19,28 @@
 
 {% block extra_javascript %}
     <datalist id="ml-systemen"></datalist>
+    <datalist id="ml-schepen"></datalist>
     <script>
     (() => {
-        const lijst = document.getElementById("ml-systemen");
-        let timer;
-        document.querySelectorAll("[data-ml-systeem]").forEach((veld) => {
-            veld.addEventListener("input", () => {
-                clearTimeout(timer);
-                const q = veld.value.trim();
-                if (q.length < 2) return;
-                timer = setTimeout(async () => {
-                    const r = await fetch("{% url 'meeliften:systemen' %}?q=" + encodeURIComponent(q));
-                    if (!r.ok) return;
-                    const { systemen } = await r.json();
-                    lijst.replaceChildren(...systemen.map((n) => Object.assign(document.createElement("option"), { value: n })));
-                }, 200);
+        const aanvullen = (selector, lijstId, url, sleutel) => {
+            const lijst = document.getElementById(lijstId);
+            let timer;
+            document.querySelectorAll(selector).forEach((veld) => {
+                veld.addEventListener("input", () => {
+                    clearTimeout(timer);
+                    const q = veld.value.trim();
+                    if (q.length < 2) return;
+                    timer = setTimeout(async () => {
+                        const r = await fetch(url + "?q=" + encodeURIComponent(q));
+                        if (!r.ok) return;
+                        const namen = (await r.json())[sleutel];
+                        lijst.replaceChildren(...namen.map((n) => Object.assign(document.createElement("option"), { value: n })));
+                    }, 200);
+                });
             });
-        });
+        };
+        aanvullen("[data-ml-systeem]", "ml-systemen", "{% url 'meeliften:systemen' %}", "systemen");
+        aanvullen("[data-ml-schip]", "ml-schepen", "{% url 'meeliften:schepen' %}", "schepen");
     })();
     </script>
 {% endblock extra_javascript %}

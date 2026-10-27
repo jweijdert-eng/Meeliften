@@ -45,6 +45,18 @@ class SchipType(models.TextChoices):
     ANDERS = "anders", _("Anders")
 
 
+# Icoontje als de piloot geen (herkenbaar) scheepstype invult: een bekend schip per klasse.
+STANDAARD_ICOON = {
+    SchipType.JF: 28850,        # Ark
+    SchipType.CARRIER: 23911,   # Thanatos
+    SchipType.DREAD: 19720,     # Revelation
+    SchipType.FAX: 37604,       # Apostle
+    SchipType.SUPER: 23913,     # Nyx
+    SchipType.TITAN: 11567,     # Avatar
+    SchipType.RORQUAL: 28352,   # Rorqual
+}
+
+
 class RitQuerySet(models.QuerySet):
     def zichtbaar(self):
         nu = timezone.now()
@@ -67,6 +79,7 @@ class Rit(models.Model):
     character = models.ForeignKey(EveCharacter, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     schip_type = models.CharField(max_length=10, choices=SchipType.choices, default=SchipType.JF)
     schip_naam = models.CharField(max_length=60, blank=True, help_text=_("Bijv. Ark, Nyx, Revelation"))
+    schip_type_id = models.PositiveIntegerField(null=True, blank=True, editable=False)
     van = models.CharField(max_length=100)
     naar = models.CharField(max_length=100)
     vertrek = models.DateTimeField(null=True, blank=True, help_text=_("Ongeveer, in EVE-tijd"))
@@ -88,6 +101,13 @@ class Rit(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_schip_type_display()} {self.van} → {self.naar}"
+
+    @property
+    def icoon(self) -> str:
+        type_id = self.schip_type_id or STANDAARD_ICOON.get(self.schip_type)
+        if not type_id:
+            return ""
+        return f"https://images.evetech.net/types/{type_id}/icon?size=64"
 
     @property
     def toegezegd(self):

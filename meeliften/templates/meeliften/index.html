@@ -21,7 +21,9 @@
                 {% with vrij=rit.nog_vrij %}
                 <div class="ml-card ml-card-eigen">
                     <div class="d-flex flex-wrap align-items-center gap-2">
+                        {% if rit.icoon %}<img class="ml-icoon" src="{{ rit.icoon }}" alt="" title="{{ rit.schip_naam|default:rit.get_schip_type_display }}">{% endif %}
                         <span class="ml-schip ml-schip-{{ rit.schip_type }}">{{ rit.get_schip_type_display }}</span>
+                        {% if rit.schip_naam %}<span class="ml-dim">{{ rit.schip_naam }}</span>{% endif %}
                         <strong>{{ rit.van }} <i class="fas fa-arrow-right ml-dim"></i> {{ rit.naar }}</strong>
                         <span class="ml-dim">{% if rit.vertrek %}{{ rit.vertrek|date:"D j M H:i" }} ET{% else %}{% translate "vertrek nog onbekend" %}{% endif %}</span>
                         <span class="ml-status ml-status-{{ rit.status }}">{{ rit.get_status_display }}</span>
@@ -107,12 +109,12 @@
                 {% with vrij=rit.nog_vrij %}
                 <div class="ml-card {% if rit.status == 'vol' %}ml-card-vol{% endif %}">
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <img class="ml-portret" src="{{ rit.character|default:rit.piloot|portret }}" alt="">
+                        {% if rit.icoon %}<img class="ml-icoon" src="{{ rit.icoon }}" alt="" title="{{ rit.schip_naam|default:rit.get_schip_type_display }}">{% endif %}
                         <div class="me-auto">
                             <div><strong>{{ rit.van }} <i class="fas fa-arrow-right ml-dim"></i> {{ rit.naar }}</strong></div>
                             <div class="small ml-dim">
                                 <span class="ml-schip ml-schip-{{ rit.schip_type }}">{{ rit.get_schip_type_display }}</span>
-                                {% if rit.schip_naam %}{{ rit.schip_naam }} · {% endif %}{% if rit.character %}{{ rit.character.character_name }}{% else %}{{ rit.piloot|naam }}{% endif %}
+                                {% if rit.schip_naam %}{{ rit.schip_naam }} · {% endif %}<img class="ml-portret-mini" src="{{ rit.character|default:rit.piloot|portret }}" alt="">{% if rit.character %}{{ rit.character.character_name }}{% else %}{{ rit.piloot|naam }}{% endif %}
                                 · {% if rit.vertrek %}{{ rit.vertrek|date:"D j M H:i" }} ET{% else %}{% translate "vertrek nog onbekend" %}{% endif %}
                             </div>
                         </div>
