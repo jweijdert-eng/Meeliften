@@ -1,9 +1,8 @@
 """Models — Meeliften.
 
 Een `Rit` is aanbod: een capital-piloot heeft ruimte over.
-Een `Vraag` is iemand die ruimte zoekt (m³ en/of een opmerking). Hangt een vraag aan een rit, dan is het
-een plekje-aanvraag bij die piloot; zonder rit staat hij los op het bord tot een
-capital-piloot zegt "ik neem het mee".
+Een `Vraag` is een verzoek om mee te mogen met zo'n rit (m³ en/of een opmerking);
+de piloot zegt ja of nee.
 """
 
 from datetime import timedelta
@@ -17,7 +16,8 @@ from allianceauth.eveonline.models import EveCharacter
 
 # Zo lang blijft aangeboden ruimte op het bord staan.
 RIT_DAGEN = 30
-VRAAG_DAGEN = 30
+# Zo lang blijft "Geen plek" bij je verzoeken staan, zodat je het ziet.
+GEEN_PLEK_DAGEN = 3
 
 
 class General(models.Model):
@@ -69,7 +69,7 @@ class Rit(models.Model):
     class Status(models.TextChoices):
         OPEN = "open", _("Ruimte vrij")
         VOL = "vol", _("Vol")
-        VERTROKKEN = "vertrokken", _("Vertrokken")
+        VERTROKKEN = "vertrokken", _("Weggehaald")
         GEANNULEERD = "geannuleerd", _("Geannuleerd")
 
     piloot = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meeliften_ritten")
@@ -122,8 +122,11 @@ class Rit(models.Model):
 
     def bezet(self) -> tuple[int, int]:
         """(m³, schepen) die al aan deze rit zijn toegezegd."""
-        m3 = sum(v.volume_m3 or 0 for v in self.toegezegd)
-        return m3, 0
+        m3 = schepen = 0
+        for v in self.toegezegd:
+            m3 += v.volume_m3 or 0
+            schepen += v.schepen or 0
+        return m3, schepen
 
     def nog_vrij(self) -> tuple[int | None, int | None]:
         m3, schepen = self.bezet()
@@ -133,34 +136,35 @@ class Rit(models.Model):
         )
 
 
-class VraagQuerySet(models.QuerySet):
-    def zichtbaar(self):
-        nu = timezone.now()
-        return self.filter(status=Vraag.Status.OPEN, aangemaakt__gte=nu - timedelta(days=VRAAG_DAGEN))
-
-
 class Vraag(models.Model):
-    """Iemand zoekt ruimte: los op het bord, of als aanvraag bij een rit."""
+    """Verzoek om mee te mogen met een rit."""
+
+    class Soort(models.TextChoices):
+        ITEMS = "items", _("Losse items")
+        REPACKAGED = "repackaged", _("Gerepackaged schip")
+        GEFIT = "gefit", _("Gefit schip")
 
     class Status(models.TextChoices):
-        OPEN = "open", _("Zoekt vervoer")
-        AANGEVRAAGD = "aangevraagd", _("Wacht op piloot")
-        TOEGEZEGD = "toegezegd", _("Toegezegd")
+        OPEN = "open", _("Open")  # oud: los op het bord; wordt niet meer gebruikt
+        AANGEVRAAGD = "aangevraagd", _("Wacht op antwoord")
+        TOEGEZEGD = "toegezegd", _("Mag mee")
+        GEWEIGERD = "geweigerd", _("Geen plek")
         AFGELEVERD = "afgeleverd", _("Afgeleverd")
-        GEANNULEERD = "geannuleerd", _("Geannuleerd")
+        GEANNULEERD = "geannuleerd", _("Ingetrokken")
 
     aanvrager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meeliften_vragen")
     character = models.ForeignKey(EveCharacter, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    volume_m3 = models.PositiveIntegerField(null=True, blank=True)
+    soort = models.CharField(max_length=12, choices=Soort.choices, default=Soort.ITEMS)
+    volume_m3 = models.PositiveIntegerField(null=True, blank=True, help_text=_("Losse items en gerepackagede schepen"))
+    schepen = models.PositiveSmallIntegerField(null=True, blank=True, help_text=_("Gefitte schepen (ship maintenance bay)"))
     opmerking = models.TextField(blank=True)
     rit = models.ForeignKey(Rit, on_delete=models.SET_NULL, null=True, blank=True, related_name="vragen")
     vervoerder = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="meeliften_vervoer"
     )
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.AANGEVRAAGD)
     aangemaakt = models.DateTimeField(auto_now_add=True)
-
-    objects = VraagQuerySet.as_manager()
+    gewijzigd = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
         default_permissions = ()
@@ -173,14 +177,17 @@ class Vraag(models.Model):
 
     @property
     def omschrijving(self) -> str:
-        """Korte tekst voor meldingen: '40.000 m³ — Ishtar + ammo'."""
+        """Korte tekst voor meldingen: '40.000 m³ losse items — Ishtar + ammo'."""
         delen = []
-        if self.volume_m3:
-            delen.append(f"{self.volume_m3:,} m³".replace(",", "."))
+        if self.soort == self.Soort.GEFIT and self.schepen:
+            delen.append("1 gefit schip" if self.schepen == 1 else f"{self.schepen} gefitte schepen")
+        elif self.volume_m3:
+            soort = "losse items" if self.soort == self.Soort.ITEMS else "gerepackaged schip"
+            delen.append(f"{self.volume_m3:,} m³ {soort}".replace(",", "."))
         if self.opmerking.strip():
             delen.append(self.opmerking.strip().splitlines()[0][:80])
         return " — ".join(delen) or "vraag"
 
     @property
     def actief(self) -> bool:
-        return self.status in (self.Status.OPEN, self.Status.AANGEVRAAGD, self.Status.TOEGEZEGD)
+        return self.status in (self.Status.AANGEVRAAGD, self.Status.TOEGEZEGD)

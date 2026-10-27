@@ -34,8 +34,12 @@ class RitForm(_EigenCharacterForm):
         fields = ["character", "schip_id", "vrij_m3", "vrij_schepen", "opmerking"]
         labels = {
             "character": _("Piloot"),
-            "vrij_m3": _("Vrij (m³)"),
-            "vrij_schepen": _("Vrije SMB-plekken"),
+            "vrij_m3": _("Vrij in cargo / fleet hangar (m³)"),
+            "vrij_schepen": _("Vrije plekken in de SMB"),
+        }
+        help_texts = {
+            "vrij_m3": _("Voor losse items en gerepackagede schepen. Leeg laten als je geen cargo-ruimte hebt."),
+            "vrij_schepen": _("Voor gefitte schepen. Leeg laten als je geen ship maintenance bay hebt."),
         }
         widgets = {
             "opmerking": forms.Textarea(attrs={"rows": 2, "placeholder": _("Bijv. 'alleen gepackagede schepen', 'via Thera'")}),
@@ -52,31 +56,63 @@ class RitForm(_EigenCharacterForm):
 
 
 
-class VraagForm(_EigenCharacterForm):
+class VraagForm(forms.ModelForm):
+    """'Ik wil mee': soort vracht, hoeveel (m³ of aantal schepen) en een opmerking.
+
+    Het verzoek gaat op naam van je main. Gefitte schepen gaan in de SMB en tellen
+    in schepen; losse items en gerepackagede schepen gaan in de cargo en tellen in m³.
+    """
+
+    hoeveel = forms.IntegerField(label=_("Hoeveel?"), min_value=1,
+                                 widget=forms.NumberInput(attrs={"class": "form-control", "placeholder": "m³ / aantal"}))
+
     class Meta:
         model = Vraag
-        fields = ["character", "volume_m3", "opmerking"]
-        labels = {
-            "character": _("Voor"),
-            "volume_m3": _("Volume (m³)"),
-        }
+        fields = ["soort", "opmerking"]
+        labels = {"soort": _("Wat moet er mee?"), "opmerking": _("Opmerking")}
         widgets = {
-            "opmerking": forms.Textarea(attrs={"rows": 3, "placeholder": _("Bijv. 'Ishtar + ammo, Jita naar Q-02UL'")}),
+            "soort": forms.RadioSelect,
+            "opmerking": forms.TextInput(attrs={"class": "form-control", "placeholder": _("Bijv. Ishtar + ammo, Jita naar Q-02UL")}),
         }
 
     def __init__(self, *args, rit=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.rit = rit
+        if rit:
+            keuzes = soorten_voor(rit)
+            self.fields["soort"].choices = keuzes
+            if keuzes:
+                self.initial.setdefault("soort", keuzes[0][0])
 
     def clean(self):
         data = super().clean()
-        if not data.get("volume_m3") and not data.get("opmerking", "").strip():
-            raise forms.ValidationError(_("Vul een volume of een opmerking in."))
-        rit = self.rit
-        if rit and data.get("volume_m3"):
-            m3, _schepen = rit.nog_vrij()
-            if rit.vrij_m3 is None:
-                self.add_error("volume_m3", _("Deze rit heeft alleen SMB-plekken; zet in de opmerking welk schip mee moet."))
-            elif data["volume_m3"] > m3:
-                self.add_error("volume_m3", _("Er is nog maar %(m3)s m³ vrij.") % {"m3": f"{m3:,}".replace(",", ".")})
+        soort, hoeveel, rit = data.get("soort"), data.get("hoeveel"), self.rit
+        if not soort or not hoeveel or not rit:
+            return data
+        m3, schepen = rit.nog_vrij()
+        if soort == Vraag.Soort.GEFIT:
+            if schepen is not None and hoeveel > schepen:
+                self.add_error("hoeveel", _("Er zijn nog maar %(n)s SMB-plekken vrij.") % {"n": schepen})
+        elif m3 is not None and hoeveel > m3:
+            self.add_error("hoeveel", _("Er is nog maar %(m3)s m³ vrij.") % {"m3": f"{m3:,}".replace(",", ".")})
         return data
+
+    def save(self, commit=True):
+        vraag = super().save(commit=False)
+        if vraag.soort == Vraag.Soort.GEFIT:
+            vraag.schepen, vraag.volume_m3 = self.cleaned_data["hoeveel"], None
+        else:
+            vraag.volume_m3, vraag.schepen = self.cleaned_data["hoeveel"], None
+        if commit:
+            vraag.save()
+        return vraag
+
+
+def soorten_voor(rit) -> list[tuple[str, str]]:
+    """Alleen de soorten die in dit schip passen: m³ voor cargo, SMB-plekken voor gefitte schepen."""
+    keuzes = []
+    if rit.vrij_m3 is not None:
+        keuzes += [(Vraag.Soort.ITEMS, Vraag.Soort.ITEMS.label), (Vraag.Soort.REPACKAGED, Vraag.Soort.REPACKAGED.label)]
+    if rit.vrij_schepen is not None:
+        keuzes.append((Vraag.Soort.GEFIT, Vraag.Soort.GEFIT.label))
+    return keuzes

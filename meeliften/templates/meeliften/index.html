@@ -7,153 +7,144 @@
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <div class="me-auto">
             <h4 class="mb-0">{% translate "Meeliften" %}</h4>
-            <div class="ml-dim small">{% translate "Capital-piloten bieden vrije ruimte aan, wie geen capital heeft vraagt een plekje." %}</div>
+            <div class="ml-dim small">{% translate "Wie heeft er ruimte in z'n capital? Klik op Ik wil mee en de piloot krijgt een melding." %}</div>
         </div>
-        <a class="btn ml-btn-aanbod" href="{% url 'meeliften:rit_nieuw' %}"><i class="fas fa-plus"></i> {% translate "Rit aanbieden" %}</a>
-        <a class="btn ml-btn-vraag" href="{% url 'meeliften:vraag_nieuw' %}"><i class="fas fa-search"></i> {% translate "Vervoer zoeken" %}</a>
+        <a class="btn ml-btn-aanbod" href="{% url 'meeliften:rit_nieuw' %}"><i class="fas fa-plus"></i> {% translate "Ik heb ruimte" %}</a>
     </div>
 
-    {% if mijn_ritten or mijn_vragen or ik_vervoer %}
-        <div class="ml-mijn mb-4">
-            <h6 class="ml-kop">{% translate "Mijn zaken" %}</h6>
-
+    {% if mijn_ritten or mijn_verzoeken %}
+        <div class="mb-4">
             {% for rit in mijn_ritten %}
                 {% with vrij=rit.nog_vrij %}
                 <div class="ml-card ml-card-eigen">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         {% if rit.icoon %}<img class="ml-icoon" src="{{ rit.icoon }}" alt="" title="{{ rit.schip_naam }}">{% endif %}
-                        <strong>{{ rit.schip_naam }}</strong>
-                        <span class="ml-schip ml-schip-{{ rit.schip_type }}">{{ rit.get_schip_type_display }}</span>
-                        <span class="ml-status ml-status-{{ rit.status }}">{{ rit.get_status_display }}</span>
-                        <span class="ms-auto ml-vrij">
-                            {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} / {{ rit.vrij_m3|m3 }} m³{% endif %}
-                            {% if rit.vrij_schepen is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}{{ vrij.1 }} / {{ rit.vrij_schepen }} SMB{% endif %}
-                        </span>
+                        <div class="me-auto">
+                            <div><strong>{% translate "Jouw" %} {{ rit.schip_naam }}</strong>
+                                {% if rit.status != "open" %}<span class="ml-status ml-status-{{ rit.status }}">{{ rit.get_status_display }}</span>{% endif %}</div>
+                            <div class="ml-vrij small">
+                                {% if rit.vrij_m3 is not None %}{{ vrij.0|m3 }} {% translate "van" %} {{ rit.vrij_m3|m3 }} m³ {% translate "vrij" %}{% endif %}
+                                {% if rit.vrij_schepen is not None %}{% if rit.vrij_m3 is not None %} · {% endif %}{{ vrij.1 }} {% translate "van" %} {{ rit.vrij_schepen }} SMB-plekken {% translate "vrij" %}{% endif %}
+                            </div>
+                        </div>
+                        <a class="btn btn-sm btn-outline-light" href="{% url 'meeliften:rit_bewerk' rit.pk %}">{% translate "Bewerken" %}</a>
+                        {% if rit.status == "open" %}
+                            <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'vol' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-warning">{% translate "Vol" %}</button></form>
+                        {% elif rit.status == "vol" %}
+                            <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'open' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-info">{% translate "Weer ruimte" %}</button></form>
+                        {% endif %}
+                        {% if rit.status == "open" or rit.status == "vol" %}
+                            <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'vertrokken' %}" onsubmit="return confirm('{% translate "Je ruimte weghalen? Wie nog op antwoord wacht krijgt een melding." %}')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Weghalen" %}</button></form>
+                        {% endif %}
                     </div>
                     {% for v in rit.vragen.all %}{% if v.status == "aangevraagd" or v.status == "toegezegd" %}
                         <div class="ml-aanvraag">
                             <img class="ml-portret" src="{{ v.character|default:v.aanvrager|portret }}" alt="">
-                            <span><strong>{{ v.aanvrager|naam }}</strong>{% if v.volume_m3 %} · {{ v.volume_m3|m3 }} m³{% endif %}
-                                {% if v.opmerking %}<span class="ml-dim">· {{ v.opmerking }}</span>{% endif %}</span>
+                            <span><strong>{{ v.aanvrager|naam }}</strong> · {{ v.omschrijving }}</span>
                             <span class="ml-status ml-status-{{ v.status }}">{{ v.get_status_display }}</span>
                             <span class="ms-auto d-flex gap-1">
                                 {% if v.status == "aangevraagd" %}
-                                    <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'accepteer' %}">{% csrf_token %}<button class="btn btn-sm btn-success">{% translate "Accepteer" %}</button></form>
-                                    <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'weiger' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Weiger" %}</button></form>
+                                    <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'ja' %}">{% csrf_token %}<button class="btn btn-sm btn-success">{% translate "Ja" %}</button></form>
+                                    <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'nee' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Nee" %}</button></form>
                                 {% else %}
                                     <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'afgeleverd' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success">{% translate "Afgeleverd" %}</button></form>
-                                    <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'terugtrekken' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "Toch niet" %}</button></form>
+                                    <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'toch-niet' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-light">{% translate "Toch niet" %}</button></form>
                                 {% endif %}
                             </span>
                         </div>
                     {% endif %}{% endfor %}
-                    <div class="d-flex flex-wrap gap-1 mt-2">
-                        <a class="btn btn-sm btn-outline-light" href="{% url 'meeliften:rit_bewerk' rit.pk %}">{% translate "Bewerken" %}</a>
-                        {% if rit.status == "open" %}
-                            <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'vol' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-warning">{% translate "Vol" %}</button></form>
-                        {% else %}
-                            <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'open' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-info">{% translate "Weer ruimte" %}</button></form>
-                        {% endif %}
-                        <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'vertrokken' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success">{% translate "Vertrokken" %}</button></form>
-                        <form method="post" action="{% url 'meeliften:rit_status' rit.pk 'geannuleerd' %}" onsubmit="return confirm('{% translate "Rit annuleren? Wie al mee mocht krijgt een melding." %}')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Annuleren" %}</button></form>
-                    </div>
                 </div>
                 {% endwith %}
             {% endfor %}
 
-            {% for v in ik_vervoer %}
+            {% for v in mijn_verzoeken %}
                 <div class="ml-card ml-card-eigen d-flex flex-wrap align-items-center gap-2">
-                    <span class="ml-status ml-status-toegezegd">{% translate "Ik neem mee" %}</span>
-                    <img class="ml-portret" src="{{ v.character|default:v.aanvrager|portret }}" alt="">
-                    <span><strong>{{ v.aanvrager|naam }}</strong>: {{ v.omschrijving }}</span>
-                    <span class="ms-auto d-flex gap-1">
-                        <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'afgeleverd' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success">{% translate "Afgeleverd" %}</button></form>
-                        <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'terugtrekken' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">{% translate "Toch niet" %}</button></form>
-                    </span>
-                </div>
-            {% endfor %}
-
-            {% for v in mijn_vragen %}
-                <div class="ml-card ml-card-eigen d-flex flex-wrap align-items-center gap-2">
+                    {% if v.rit and v.rit.icoon %}<img class="ml-icoon ml-icoon-klein" src="{{ v.rit.icoon }}" alt="">{% endif %}
+                    <span>{% translate "Jouw verzoek bij" %} <strong>{{ v.rit.piloot|naam }}</strong>{% if v.rit %} ({{ v.rit.schip_naam }}){% endif %} · {{ v.omschrijving }}</span>
                     <span class="ml-status ml-status-{{ v.status }}">{{ v.get_status_display }}</span>
-                    <span><strong>{{ v.omschrijving }}</strong></span>
-                    {% if v.vervoerder %}<span class="ml-dim">{% translate "door" %} {{ v.vervoerder|naam }}</span>
-                    {% elif v.rit %}<span class="ml-dim">{% translate "gevraagd bij" %} {{ v.rit.piloot|naam }}</span>{% endif %}
                     <span class="ms-auto d-flex gap-1">
                         {% if v.status == "toegezegd" %}
                             <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'afgeleverd' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success">{% translate "Ontvangen" %}</button></form>
                         {% endif %}
-                        <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'annuleer' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">{% translate "Intrekken" %}</button></form>
+                        <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'intrekken' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-light">{% if v.status == "geweigerd" %}{% translate "Weg" %}{% else %}{% translate "Intrekken" %}{% endif %}</button></form>
                     </span>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    <form class="d-flex flex-wrap gap-2 mb-3" method="get">
-        <select class="form-select ml-filter" name="schip" onchange="this.form.submit()">
-            <option value="">{% translate "Alle schepen" %}</option>
-            {% for waarde, label in schip_types %}<option value="{{ waarde }}" {% if waarde == schip %}selected{% endif %}>{{ label }}</option>{% endfor %}
-        </select>
-        {% if schip %}<a class="btn btn-link" href="{% url 'meeliften:index' %}">{% translate "Wis" %}</a>{% endif %}
-    </form>
-
-    <div class="row g-3">
-        <div class="col-lg-7">
-            <h6 class="ml-kop">{% translate "Aangeboden ruimte" %} <span class="ml-dim">({{ ritten|length }})</span></h6>
-            {% for rit in ritten %}
-                {% with vrij=rit.nog_vrij %}
-                <div class="ml-card {% if rit.status == 'vol' %}ml-card-vol{% endif %}">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        {% if rit.icoon %}<img class="ml-icoon" src="{{ rit.icoon }}" alt="" title="{{ rit.schip_naam }}">{% endif %}
-                        <div class="me-auto">
-                            <div><strong>{{ rit.schip_naam }}</strong></div>
-                            <div class="small ml-dim">
-                                <span class="ml-schip ml-schip-{{ rit.schip_type }}">{{ rit.get_schip_type_display }}</span>
-                                <img class="ml-portret-mini" src="{{ rit.character|default:rit.piloot|portret }}" alt="">{% if rit.character %}{{ rit.character.character_name }}{% else %}{{ rit.piloot|naam }}{% endif %}
-                            </div>
-                        </div>
-                        <div class="text-end">
-                            {% if rit.vrij_m3 is not None %}<div class="ml-vrij">{{ vrij.0|m3 }} m³ <span class="ml-dim small">{% translate "vrij" %}</span></div>{% endif %}
-                            {% if rit.vrij_schepen is not None %}<div class="ml-vrij">{{ vrij.1 }} SMB <span class="ml-dim small">{% translate "plek" %}{{ vrij.1|pluralize:"ken" }}</span></div>{% endif %}
-                        </div>
-                        {% if rit.piloot != request.user %}
-                            {% if rit.status == "open" %}
-                                <a class="btn btn-sm ml-btn-vraag" href="{% url 'meeliften:plekje' rit.pk %}">{% translate "Vraag plekje" %}</a>
-                            {% else %}
-                                <span class="ml-status ml-status-vol">{% translate "Vol" %}</span>
-                            {% endif %}
-                        {% elif beheerder or rit.piloot == request.user %}
-                            <span class="ml-dim small">{% translate "jouw rit" %}</span>
-                        {% endif %}
-                    </div>
-                    {% if rit.opmerking %}<div class="ml-opmerking">{{ rit.opmerking }}</div>{% endif %}
-                </div>
-                {% endwith %}
-            {% empty %}
-                <div class="ml-leeg">{% translate "Nog geen ruimte aangeboden. Heb je een capital? Bied je vrije ruimte aan!" %}</div>
-            {% endfor %}
-        </div>
-
-        <div class="col-lg-5">
-            <h6 class="ml-kop">{% translate "Gezocht: vervoer" %} <span class="ml-dim">({{ vragen|length }})</span></h6>
-            {% for v in vragen %}
-                <div class="ml-card">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <img class="ml-portret" src="{{ v.character|default:v.aanvrager|portret }}" alt="">
-                        <div class="me-auto">
-                            <div><strong>{% if v.character %}{{ v.character.character_name }}{% else %}{{ v.aanvrager|naam }}{% endif %}</strong></div>
-                            {% if v.volume_m3 %}<div class="ml-vrij">{{ v.volume_m3|m3 }} m³</div>{% endif %}
-                        </div>
-                        {% if v.aanvrager != request.user %}
-                            <form method="post" action="{% url 'meeliften:vraag_actie' v.pk 'meenemen' %}">{% csrf_token %}<button class="btn btn-sm ml-btn-aanbod">{% translate "Ik neem het mee" %}</button></form>
-                        {% endif %}
-                    </div>
-                    {% if v.opmerking %}<div class="ml-opmerking">{{ v.opmerking }}</div>{% endif %}
-                </div>
-            {% empty %}
-                <div class="ml-leeg">{% translate "Niemand zoekt op dit moment vervoer." %}</div>
-            {% endfor %}
-        </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h6 class="ml-kop mb-0 me-auto">{% translate "Wie heeft ruimte" %} <span class="ml-dim">({{ ritten|length }})</span></h6>
+        <form method="get">
+            <select class="form-select form-select-sm ml-filter" name="schip" onchange="this.form.submit()">
+                <option value="">{% translate "Alle schepen" %}</option>
+                {% for waarde, label in schip_types %}<option value="{{ waarde }}" {% if waarde == schip %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </form>
     </div>
+
+    {% for rit in ritten %}
+        {% with vrij=rit.nog_vrij %}
+        <div class="ml-card {% if rit.status == 'vol' %}ml-card-vol{% endif %}">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                {% if rit.icoon %}<img class="ml-icoon" src="{{ rit.icoon }}" alt="" title="{{ rit.schip_naam }}">{% endif %}
+                <div class="me-auto">
+                    <div><strong>{{ rit.schip_naam }}</strong> <span class="ml-schip ml-schip-{{ rit.schip_type }}">{{ rit.get_schip_type_display }}</span></div>
+                    <div class="small ml-dim">
+                        <img class="ml-portret-mini" src="{{ rit.character|default:rit.piloot|portret }}" alt="">{% if rit.character %}{{ rit.character.character_name }}{% else %}{{ rit.piloot|naam }}{% endif %}
+                        {% if rit.opmerking %} · {{ rit.opmerking }}{% endif %}
+                    </div>
+                </div>
+                <div class="text-end">
+                    {% if rit.vrij_m3 is not None %}<div class="ml-vrij">{{ vrij.0|m3 }} m³ <span class="ml-dim small">{% translate "vrij" %}</span></div>{% endif %}
+                    {% if rit.vrij_schepen is not None %}<div class="ml-vrij">{{ vrij.1 }} SMB <span class="ml-dim small">{% translate "voor gefitte schepen" %}</span></div>{% endif %}
+                </div>
+                {% if rit.piloot == request.user %}
+                    <span class="ml-dim small">{% translate "jouw schip" %}</span>
+                {% elif rit.status == "vol" %}
+                    <span class="ml-status ml-status-vol">{% translate "Vol" %}</span>
+                {% else %}
+                    <button class="btn btn-sm ml-btn-vraag" type="button" data-bs-toggle="collapse" data-bs-target="#mee-{{ rit.pk }}">{% translate "Ik wil mee" %}</button>
+                {% endif %}
+            </div>
+            {% if rit.piloot != request.user and rit.status == "open" %}
+                {% with f=rit.vraag_form %}
+                <form class="collapse ml-mee" id="mee-{{ rit.pk }}" method="post" action="{% url 'meeliften:plekje' rit.pk %}">
+                    {% csrf_token %}
+                    <div class="d-flex flex-wrap gap-3 mb-2" data-ml-soort>
+                        {% for keuze in f.soort %}
+                            <label class="ml-keuze">{{ keuze.tag }} {{ keuze.choice_label }}</label>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-start">
+                        <div class="ml-hoeveel">
+                            {{ f.hoeveel }}
+                            <div class="form-text ml-dim" data-ml-eenheid>m³</div>
+                        </div>
+                        <div class="flex-grow-1">{{ f.opmerking }}</div>
+                        <button class="btn ml-btn-vraag">{% translate "Verstuur" %}</button>
+                    </div>
+                </form>
+                {% endwith %}
+            {% endif %}
+        </div>
+        {% endwith %}
+    {% empty %}
+        <div class="ml-leeg">{% translate "Nog niemand heeft ruimte aangeboden. Heb jij een capital? Klik op Ik heb ruimte." %}</div>
+    {% endfor %}
 {% endblock %}
+
+{% block extra_javascript %}
+    <script>
+    document.querySelectorAll(".ml-mee").forEach((form) => {
+        const eenheid = form.querySelector("[data-ml-eenheid]");
+        const zet = () => {
+            const gekozen = form.querySelector("[data-ml-soort] input:checked");
+            const gefit = gekozen && gekozen.value === "gefit";
+            eenheid.textContent = gefit ? "{% translate 'aantal schepen' %}" : "m³";
+        };
+        form.querySelectorAll("[data-ml-soort] input").forEach((r) => r.addEventListener("change", zet));
+        zet();
+    });
+    </script>
+{% endblock extra_javascript %}

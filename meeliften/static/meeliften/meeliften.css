@@ -58,6 +58,14 @@
     margin-top: .5rem; padding: .4rem .5rem; border-radius: 6px; background: var(--ml-surface-2);
 }
 .ml-app .ml-filter { max-width: 200px; }
+.ml-app .ml-icoon-klein { width: 32px; height: 32px; }
+.ml-app .ml-mee {
+    margin-top: .6rem; padding: .6rem .7rem; border-radius: 6px;
+    background: var(--ml-surface-2); border: 1px solid var(--ml-border);
+}
+.ml-app .ml-keuze { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
+.ml-app .ml-hoeveel { width: 150px; }
+.ml-app .ml-status-geweigerd { color: var(--ml-red); }
 .ml-app form { margin: 0; }
 
 /* Labels */
